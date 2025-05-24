@@ -7,9 +7,10 @@
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
 ![Azure](https://img.shields.io/badge/azure-%230072C6.svg?style=for-the-badge&logo=microsoftazure&logoColor=white)
 
-*A modern, beautiful family task management application built with Rust, Leptos and Azure Cosmos DB*
+## A modern, beautiful family task management application built with Rust, Leptos and Azure Cosmos DB*
 
-[Demo](#demo) • [Features](#features) • [Getting Started](#getting-started) • [Documentation](#documentation)
+![Cosmic Todos](images/cosmic-rust-logo.png)
+
 
 </div>
 
@@ -29,29 +30,34 @@ Cosmic Todos is a sleek, modern web application designed for family task managem
 ## ✨ Features
 
 ### 🎨 **Beautiful User Interface**
+
 - Modern gradient-based design system
 - Responsive layout that works on all devices
 - Smooth animations and micro-interactions
 - Dark mode support (coming soon)
 
 ### 📋 **Comprehensive Task Management**
+
 - Create, edit, and delete tasks with rich metadata
 - Set due dates and times with timezone awareness
 - Track task status (Not Started, In Progress, Completed, Blocked)
 - Visual indicators for overdue tasks
 
 ### 👥 **Family-Focused**
+
 - Multi-user support for family members
 - Assign tasks to specific family members
 - Filter tasks by assignee
 - Shared family dashboard
 
 ### 🔐 **Secure Authentication**
+
 - Environment-based configuration
 - Session management
 - Secure login flow
 
 ### 📱 **Responsive & Accessible**
+
 - Mobile-first responsive design
 - Keyboard navigation support
 - Screen reader friendly
@@ -84,36 +90,42 @@ Cosmic Todos is a sleek, modern web application designed for family task managem
 ### 🔧 Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/cosmic-todos.git
    cd cosmic-todos
     ```
 
-2 **Install Rust dependencies**
-```bash
-cargo install cargo-leptos
-rustup target add wasm32-unknown-unknown
-```
+2. **Install Rust dependencies**
 
-3. Set up your environment variables
-```bash
-cp .env.example .env
-# Edit .env with your credentials
-export COSMIC_USERNAME=your_username
-export COSMIC_PASSWORD=your_password
-export AZURE_COSMOS_CONNECTION_STRING=your_cosmos_connection_string
-```
+  ```bash
+  cargo install cargo-leptos
+  rustup target add wasm32-unknown-unknown
+  ```
 
-4. Run the development server
+3. **Set up your environment variables**
+
+  ```bash
+  cp .env.example .env
+  # Edit .env with your credentials
+  export COSMIC_USERNAME=your_username
+  export COSMIC_PASSWORD=your_password
+  export AZURE_COSMOS_CONNECTION_STRING=your_cosmos_connection_string
+  ```
+
+4. **Run the development server**
+
 ```bash
 just run
 # or 
 cargo leptos watch
 ```
-5. Open your browser and navigate to `http://localhost:3000`
+
+5. **Open your browser and navigate to `http://localhost:3000`**
 
 ☁️ Azure Deployment
 Deploy to Azure Static Web Apps:
+
 ```bash
 just deploy
 # or
@@ -136,6 +148,7 @@ az staticwebapp create \
 ```
 
 🐳 Docker Setup
+
 ```bash
 # Build the image
 docker build -t cosmic-todos .
@@ -151,6 +164,7 @@ docker run -p 3000:80 \
 📋 Development
 Available Commands
 This project uses Just for task automation:
+
 ```bash
 just --list                 # Show all available commands
 just format                 # Format code with rustfmt
@@ -165,7 +179,9 @@ just setup                  # Set up development environment
 just production             # Full production build
 just deploy                 # Deploy to Azure
 just docker-build           # Build Docker image
-```	
+```
+
+If you don't have Just installed, check the [Just manual](https://just.systems/man/en/introduction.html)
 
 🎨 Styling
 The project uses Tailwind CSS with custom configurations:
@@ -188,6 +204,7 @@ cargo tarpaulin --out html
 ```
 
 📁 Project Structure
+
 ```bash
 cosmic-todos/
 ├── src/
@@ -208,11 +225,12 @@ cosmic-todos/
 🔧 Configuration
 Environment Variables
 
-Variable    Description    Required  
-COSMIC_USERNAME    Application username	Yes  
-COSMIC_PASSWORD	Application password	Yes  
-AZURE_COSMOS_CONNECTION_STRING	Cosmos DB connection string	Yes  
-RUST_LOG	Log level (info, debug, warn, error)	No  
+| Variable | Description | Required |
+|----------|-------------|----------|
+| COSMIC_USERNAME    | Application username | Yes      |
+| COSMIC_PASSWORD    | Application password | Yes      |
+| AZURE_COSMOS_CONNECTION_STRING | Cosmos DB connection string | Yes      |
+| RUST_LOG | Log level (info, debug, warn, error) | No       |  
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
