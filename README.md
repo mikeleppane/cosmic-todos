@@ -63,6 +63,29 @@ Cosmic Todos is a sleek, modern web application designed for family task managem
 - Screen reader friendly
 - Touch-friendly interface
 
+## 🏗️ Architecture
+
+Cosmic Todos follows a modern full-stack architecture leveraging Rust's ecosystem for both frontend and backend components, with Azure cloud services providing scalable infrastructure.
+
+![Architecture Diagram](images/cosmis-rust-arch.png)
+
+### Architecture Overview
+
+The application is built on a **three-tier architecture** with clear separation of concerns:
+
+- **Frontend Layer**: Leptos-based reactive UI compiled to WebAssembly, providing type-safe client-side interactions with excellent performance
+- **API Layer**: Rust-based serverless functions hosted on Azure Functions, handling business logic and data validation
+- **Data Layer**: Azure Cosmos DB providing globally distributed, multi-model database capabilities with automatic scaling
+
+**Key Architectural Benefits:**
+- **Type Safety**: End-to-end Rust ensures compile-time error detection and prevents runtime errors
+- **Performance**: WebAssembly frontend delivers near-native performance in the browser
+- **Scalability**: Serverless architecture automatically scales based on demand
+- **Global Distribution**: Azure Cosmos DB enables low-latency access worldwide
+- **Developer Experience**: Shared types and models between frontend and backend reduce duplication and increase maintainability
+
+The architecture supports modern development practices including continuous deployment, containerization, and cloud-native patterns while maintaining the performance and safety guarantees that Rust provides.
+
 ## 🛠️ Technology Stack
 
 | Category | Technology |
