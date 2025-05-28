@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use uuid::Uuid;
 
-use crate::todo::{Todo, TodoAssignee, TodoStatus};
+use crate::{
+    config::get_config,
+    todo::{Todo, TodoAssignee, TodoStatus},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CosmosDbTodo {
@@ -59,12 +62,11 @@ impl CosmosService {
     pub fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         /* let _ = env::var("AZURE_COSMOS_CONNECTION_STRING")
         .map_err(|_| "AZURE_COSMOS_CONNECTION_STRING environment variable not found")?; */
+        let app_config = get_config().map_err(|e| format!("Failed to get app config: {}", e))?;
 
         let client = CosmosClient::with_key(
-            "https://familyleppanen-cosmic-rust.documents.azure.com:443/",
-            Secret::from(
-                "FZWpWvjxjsAsmbRWMjFQP99R26ov994hii8uKa1ggGLf2pPezP3rWIIhhr4i3LhTBq38t8WBxb6ZACDbBe1meQ==",
-            ),
+            &app_config.cosmos.uri,
+            Secret::from(app_config.cosmos.connection_string.as_str()),
             None,
         )?;
 
