@@ -1,9 +1,10 @@
 use std::str::FromStr;
 
 use chrono::{DateTime, Local, TimeZone};
+use serde::{Deserialize, Serialize};
 
 // Enhanced Todo struct with additional fields
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 pub enum TodoStatus {
     NotStarted,
     Completed,
@@ -37,7 +38,7 @@ impl FromStr for TodoStatus {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TodoAssignee {
     Mikko,
     Niina,
@@ -63,7 +64,7 @@ impl FromStr for TodoAssignee {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Todo {
     pub id: usize,
     pub title: String,

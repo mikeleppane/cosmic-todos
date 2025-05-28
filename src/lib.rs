@@ -1,4 +1,7 @@
 pub mod app;
+pub mod auth;
+pub mod config;
+pub mod services;
 pub mod todo;
 pub mod views;
 
