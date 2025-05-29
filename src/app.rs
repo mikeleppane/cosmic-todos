@@ -1,6 +1,6 @@
 #![allow(clippy::must_use_candidate)]
 use leptos::prelude::*;
-use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
+use leptos_meta::{Link, MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
     NavigateOptions, StaticSegment,
     components::{Route, Router, Routes},
@@ -48,6 +48,8 @@ pub fn App() -> impl IntoView {
 
         // sets the document title
         <Title text="Family Leppänen Todos" />
+
+        <Link rel="icon" type_="image/png" sizes="64x64" href="/images/familyleppanen-logo-64x64.png"/>
 
         // content for this welcome page
         <Router>

@@ -6,6 +6,38 @@ use chrono::{Datelike, Local, NaiveDate, TimeZone};
 use leptos::web_sys;
 use leptos::{ev, prelude::*};
 
+#[derive(Debug, Clone, PartialEq)]
+enum SortBy {
+    Title,
+    DueDate,
+    Status,
+    Assignee,
+    CreatedDate,
+}
+
+impl SortBy {
+    fn as_str(&self) -> &'static str {
+        match self {
+            SortBy::Title => "title",
+            SortBy::DueDate => "due_date",
+            SortBy::Status => "status",
+            SortBy::Assignee => "assignee",
+            SortBy::CreatedDate => "created_date",
+        }
+    }
+
+    fn from_str(s: &str) -> Self {
+        match s {
+            "title" => SortBy::Title,
+            "due_date" => SortBy::DueDate,
+            "status" => SortBy::Status,
+            "assignee" => SortBy::Assignee,
+            "created_date" => SortBy::CreatedDate,
+            _ => SortBy::CreatedDate,
+        }
+    }
+}
+
 #[component]
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::must_use_candidate)]
@@ -34,6 +66,13 @@ pub fn HomePage() -> impl IntoView {
     let (new_assignee, set_new_assignee) = signal("Mikko".to_string());
     let (new_status, set_new_status) = signal("Not Started".to_string());
 
+    // Sorting and filtering state
+    let (sort_by, set_sort_by) = signal(SortBy::CreatedDate);
+    let (sort_ascending, set_sort_ascending) = signal(false);
+    let (filter_status, set_filter_status) = signal("All".to_string());
+    let (filter_assignee, set_filter_assignee) = signal("All".to_string());
+    let (search_term, set_search_term) = signal(String::new());
+
     // Helper to reset form
     let reset_form = move || {
         set_new_title.set(String::new());
@@ -61,6 +100,71 @@ pub fn HomePage() -> impl IntoView {
         } else {
             set_new_due_date.set(String::new());
             set_new_due_time.set(String::new());
+        }
+    };
+
+    // Filter and sort todos
+    let filtered_and_sorted_todos = move || {
+        let mut todos_list = todos.get();
+        let search = search_term.get().to_lowercase();
+        let status_filter = filter_status.get();
+        let assignee_filter = filter_assignee.get();
+
+        // Apply filters
+        todos_list.retain(|todo| {
+            // Search filter
+            let matches_search = search.is_empty()
+                || todo.title.to_lowercase().contains(&search)
+                || todo
+                    .description
+                    .as_ref()
+                    .map_or(false, |desc| desc.to_lowercase().contains(&search));
+
+            // Status filter
+            let matches_status = status_filter == "All" || todo.status.as_str() == status_filter;
+
+            // Assignee filter
+            let matches_assignee =
+                assignee_filter == "All" || todo.assignee.as_str() == assignee_filter;
+
+            matches_search && matches_status && matches_assignee
+        });
+
+        // Apply sorting
+        let sort_criteria = sort_by.get();
+        let ascending = sort_ascending.get();
+
+        todos_list.sort_by(|a, b| {
+            let comparison = match sort_criteria {
+                SortBy::Title => a.title.cmp(&b.title),
+                SortBy::DueDate => match (a.due_date, b.due_date) {
+                    (Some(a_date), Some(b_date)) => a_date.cmp(&b_date),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
+                },
+                SortBy::Status => a.status.as_str().cmp(b.status.as_str()),
+                SortBy::Assignee => a.assignee.as_str().cmp(b.assignee.as_str()),
+                SortBy::CreatedDate => a.id.cmp(&b.id),
+            };
+
+            if ascending {
+                comparison
+            } else {
+                comparison.reverse()
+            }
+        });
+
+        todos_list
+    };
+
+    // Toggle sort order for the same field
+    let _handle_sort_change = move |new_sort: SortBy| {
+        if sort_by.get() == new_sort {
+            set_sort_ascending.update(|asc| *asc = !*asc);
+        } else {
+            set_sort_by.set(new_sort);
+            set_sort_ascending.set(true);
         }
     };
 
@@ -162,6 +266,7 @@ pub fn HomePage() -> impl IntoView {
         }
     });
 
+    // ...existing code...
     // Watch for create todo results
     Effect::new(move |_| {
         if let Some(result) = create_todo_action.value().get() {
@@ -282,7 +387,7 @@ pub fn HomePage() -> impl IntoView {
 
     let format_due_date = |timestamp: i64| -> String {
         if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp, 0) {
-            datetime.format("%B %d, %Y at %I:%M %p").to_string()
+            datetime.format("%A, %B %d, %Y at %I:%M %p").to_string()
         } else {
             "Invalid date".to_string()
         }
@@ -301,6 +406,14 @@ pub fn HomePage() -> impl IntoView {
 
             // Header with create button
             <div class="flex justify-between items-center mb-6">
+                    <img
+                    src="/images/familyleppanen-logo.png"
+                    alt="Family Todos Logo"
+                    class="h-10 w-auto"
+                    // make the size reasonable now it is 1024x1024, 256x256
+                    style="width: 50px; height: 50px;"
+
+                    />
                 <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
                     "Family Todos"
                 </h1>
@@ -409,8 +522,112 @@ pub fn HomePage() -> impl IntoView {
                     </div>
                 </div>
 
-                // Todo list section with edit/delete buttons
+                // Todo list section with search, filters, and sorting
                 <div class="lg:col-span-2">
+                    // Search and filter controls
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+                        // Search bar
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                "Search todos"
+                            </label>
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    prop:value=move || search_term.get()
+                                    on:input=move |ev| set_search_term.set(event_target_value(&ev))
+                                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="Search by title or description..."
+                                />
+                                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        // Filters and sorting row
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            // Status filter
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    "Status"
+                                </label>
+                                <select
+                                    prop:value=move || filter_status.get()
+                                    on:change=move |ev| set_filter_status.set(event_target_value(&ev))
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                >
+                                    <option value="All">"All Status"</option>
+                                    <option value="Not Started">"Not Started"</option>
+                                    <option value="In Progress">"In Progress"</option>
+                                    <option value="Completed">"Completed"</option>
+                                    <option value="Blocked">"Blocked"</option>
+                                </select>
+                            </div>
+
+                            // Assignee filter
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    "Assignee"
+                                </label>
+                                <select
+                                    prop:value=move || filter_assignee.get()
+                                    on:change=move |ev| set_filter_assignee.set(event_target_value(&ev))
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                >
+                                    <option value="All">"All Assignees"</option>
+                                    <option value="Mikko">"Mikko"</option>
+                                    <option value="Niina">"Niina"</option>
+                                </select>
+                            </div>
+
+                            // Sort by
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    "Sort by"
+                                </label>
+                                <select
+                                    prop:value=move || sort_by.get().as_str()
+                                    on:change=move |ev| set_sort_by.set(SortBy::from_str(&event_target_value(&ev)))
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                >
+                                    <option value="created_date">"Created Date"</option>
+                                    <option value="title">"Title"</option>
+                                    <option value="due_date">"Due Date"</option>
+                                    <option value="status">"Status"</option>
+                                    <option value="assignee">"Assignee"</option>
+                                </select>
+                            </div>
+
+                            // Sort order toggle
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    "Order"
+                                </label>
+                                <button
+                                    on:click=move |_| set_sort_ascending.update(|asc| *asc = !*asc)
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-2"
+                                >
+                                    {move || if sort_ascending.get() { "Ascending" } else { "Descending" }}
+                                    <svg class={format!("w-4 h-4 transition-transform {}", if sort_ascending.get() { "rotate-0" } else { "rotate-180" })} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        // Results count
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <p class="text-sm text-gray-600">
+                                {move || {
+                                    let filtered_count = filtered_and_sorted_todos().len();
+                                    let total_count = todos.get().len();
+                                    format!("Showing {} of {} todos", filtered_count, total_count)
+                                }}
+                            </p>
+                        </div>
+                    </div>
+
                     <Show when=move || loading.get()>
                         <div class="flex justify-center items-center py-8">
                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -421,28 +638,56 @@ pub fn HomePage() -> impl IntoView {
                     <Show when=move || !loading.get()>
                         <div class="space-y-4">
                             {move || {
-                                let todos_list = todos.get();
+                                let todos_list = filtered_and_sorted_todos();
                                 if todos_list.is_empty() {
-                                    view! {
-                                        <div class="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
-                                            <div class="text-gray-400 mb-4">
-                                                <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                                </svg>
+                                    let has_filters = !search_term.get().is_empty()
+                                        || filter_status.get() != "All"
+                                        || filter_assignee.get() != "All";
+
+                                    if has_filters {
+                                        view! {
+                                            <div class="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
+                                                <div class="text-gray-400 mb-4">
+                                                    <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                                    </svg>
+                                                </div>
+                                                <h3 class="text-lg font-medium text-gray-900 mb-2">"No todos match your filters"</h3>
+                                                <p class="text-gray-500 mb-4">"Try adjusting your search or filter criteria."</p>
+                                                <button
+                                                    on:click=move |_| {
+                                                        set_search_term.set(String::new());
+                                                        set_filter_status.set("All".to_string());
+                                                        set_filter_assignee.set("All".to_string());
+                                                    }
+                                                    class="px-4 py-2 text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+                                                >
+                                                    "Clear Filters"
+                                                </button>
                                             </div>
-                                            <h3 class="text-lg font-medium text-gray-900 mb-2">"No todos yet"</h3>
-                                            <p class="text-gray-500 mb-4">"Create your first todo to get started!"</p>
-                                            <button
-                                                on:click=move |_| {
-                                                    reset_form();
-                                                    set_show_modal.set(true);
-                                                }
-                                                class="px-4 py-2 bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white rounded-lg hover:from-purple-600 hover:to-fuchsia-600 transition-all duration-200"
-                                            >
-                                                "Create First Todo"
-                                            </button>
-                                        </div>
-                                    }.into_any()
+                                        }.into_any()
+                                    } else {
+                                        view! {
+                                            <div class="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
+                                                <div class="text-gray-400 mb-4">
+                                                    <svg class="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                                    </svg>
+                                                </div>
+                                                <h3 class="text-lg font-medium text-gray-900 mb-2">"No todos yet"</h3>
+                                                <p class="text-gray-500 mb-4">"Create your first todo to get started!"</p>
+                                                <button
+                                                    on:click=move |_| {
+                                                        reset_form();
+                                                        set_show_modal.set(true);
+                                                    }
+                                                    class="px-4 py-2 bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white rounded-lg hover:from-purple-600 hover:to-fuchsia-600 transition-all duration-200"
+                                                >
+                                                    "Create First Todo"
+                                                </button>
+                                            </div>
+                                        }.into_any()
+                                    }
                                 } else {
                                     view! {
                                         <div class="grid gap-4">

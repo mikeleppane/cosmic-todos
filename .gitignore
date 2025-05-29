@@ -50,3 +50,4 @@ __pycache__/
 *.py[cod]
 *.pyc
 .venv/
+.zip
