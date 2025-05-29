@@ -24,7 +24,7 @@ async fn main() -> miette::Result<()> {
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
 
-    leptos::logging::debug_warn!("Application configuration:\n {:#?}", &app_config);
+    leptos::logging::debug_warn!("Application configuration:\n {}", &app_config);
     let app = Router::new()
         .leptos_routes(&leptos_options, routes, {
             let leptos_options = leptos_options.clone();

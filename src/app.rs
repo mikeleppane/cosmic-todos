@@ -102,37 +102,34 @@ pub async fn create_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
     // Initialize DB on first access
     logging::log!("Initializing Cosmos DB...");
     let cosmos_service = get_cosmos_service()
-        .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {e}")))?;
 
     logging::log!("Creating todo in Cosmos DB: {:?}", todo);
 
     let cosmos_todo = cosmos_service
         .create_todo(todo)
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to create todo: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Failed to create todo: {e}")))?;
 
     logging::log!("Created todo in Cosmos DB: {:?}", cosmos_todo);
 
     Ok(Todo::from(cosmos_todo))
 }
 
-/* #[server(name=GetTodos, prefix="/api")]
+#[server(name=GetTodos, prefix="/api")]
 pub async fn get_todos_server() -> Result<Vec<Todo>, ServerFnError> {
-    use crate::cosmos_service::{get_cosmos_service, initialize_cosmos_db};
+    use crate::services::cosmos_service::get_cosmos_service;
     use leptos::logging;
 
-    // Initialize DB on first access
-    initialize_cosmos_db()
-        .await
-        .map_err(|e| ServerFnError::new(format!("Failed to initialize Cosmos DB: {}", e)))?;
-
     let cosmos_service = get_cosmos_service()
-        .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {e}")))?;
+
+    logging::log!("Retrieving todos from Cosmos DB...");
 
     let cosmos_todos = cosmos_service
-        .get_todos("leppanen")
+        .get_todos()
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to get todos: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Failed to get todos: {e}")))?;
 
     let todos: Vec<Todo> = cosmos_todos.into_iter().map(Todo::from).collect();
 
@@ -142,22 +139,17 @@ pub async fn get_todos_server() -> Result<Vec<Todo>, ServerFnError> {
 }
 
 #[server(UpdateTodo, "/api")]
-pub async fn update_todo_server(todo_id: String, todo: Todo) -> Result<Todo, ServerFnError> {
-    use crate::cosmos_service::{get_cosmos_service, initialize_cosmos_db};
+pub async fn update_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
+    use crate::services::cosmos_service::get_cosmos_service;
     use leptos::logging;
 
-    // Initialize DB on first access
-    initialize_cosmos_db()
-        .await
-        .map_err(|e| ServerFnError::new(format!("Failed to initialize Cosmos DB: {}", e)))?;
-
     let cosmos_service = get_cosmos_service()
-        .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {e}")))?;
 
     let cosmos_todo = cosmos_service
-        .update_todo(&todo_id, todo)
+        .update_todo(todo)
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to update todo: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Failed to update todo: {e}")))?;
 
     logging::log!("Updated todo in Cosmos DB: {:?}", cosmos_todo);
 
@@ -166,24 +158,18 @@ pub async fn update_todo_server(todo_id: String, todo: Todo) -> Result<Todo, Ser
 
 #[server(DeleteTodo, "/api")]
 pub async fn delete_todo_server(todo_id: String) -> Result<(), ServerFnError> {
-    use crate::cosmos_service::{get_cosmos_service, initialize_cosmos_db};
+    use crate::services::cosmos_service::get_cosmos_service;
     use leptos::logging;
 
-    // Initialize DB on first access
-    initialize_cosmos_db()
-        .await
-        .map_err(|e| ServerFnError::new(format!("Failed to initialize Cosmos DB: {}", e)))?;
-
     let cosmos_service = get_cosmos_service()
-        .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {e}")))?;
 
     cosmos_service
-        .delete_todo("leppanen", &todo_id)
+        .delete_todo(&todo_id)
         .await
-        .map_err(|e| ServerFnError::new(format!("Failed to delete todo: {}", e)))?;
+        .map_err(|e| ServerFnError::new(format!("Failed to delete todo: {e}")))?;
 
-    logging::log!("Deleted todo from Cosmos DB: {}", todo_id);
+    logging::log!("Deleted todo from Cosmos DB: {todo_id}");
 
     Ok(())
 }
-    */

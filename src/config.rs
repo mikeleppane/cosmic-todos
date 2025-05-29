@@ -1,10 +1,11 @@
 use leptos::leptos_dom::logging;
 use miette::{Diagnostic, SourceSpan};
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     env,
     fmt::{self, Formatter},
+    str::FromStr,
 };
 use thiserror::Error;
 
@@ -21,10 +22,16 @@ pub struct AppConfig {
 
     // Logging Configuration
     pub logging: LoggingConfig,
+
+    // Email Configuration
+    pub emails: HashMap<TodoAssignee, String>, // Uncomment if email config is needed
+                                               // Add more configuration sections as needed
 }
 
 #[cfg(feature = "ssr")]
 use axum::extract::FromRef;
+
+use crate::todo::TodoAssignee;
 #[cfg(feature = "ssr")]
 impl FromRef<()> for AppConfig {
     fn from_ref(_: &()) -> Self {
@@ -106,6 +113,21 @@ impl fmt::Display for AppConfig {
             }
         )?;
 
+        // Emails
+        writeln!(f, "✉️  Emails:")?;
+        if self.emails.is_empty() {
+            writeln!(f, "   No email configuration found")?;
+        } else {
+            for (assignee, email) in &self.emails {
+                writeln!(f, "   {assignee}: {email}")?;
+            }
+        }
+
+        writeln!(f, "═══════════════════════════════")?;
+        writeln!(f, "🌌 Cosmic Todos is ready to rock!")?;
+        writeln!(f, "═══════════════════════════════")?;
+        writeln!(f, "🚀 Enjoy your cosmic journey!")?;
+
         Ok(())
     }
 }
@@ -117,7 +139,7 @@ impl fmt::Display for Environment {
             Environment::Staging => ("🚀", "Staging"),
             Environment::Production => ("🏭", "Production"),
         };
-        write!(f, "{} {}", emoji, name)
+        write!(f, "{emoji} {name}")
     }
 }
 
@@ -127,7 +149,7 @@ impl fmt::Display for LogFormat {
             LogFormat::Json => ("📋", "JSON"),
             LogFormat::Pretty => ("🎨", "Pretty"),
         };
-        write!(f, "{} {}", emoji, name)
+        write!(f, "{emoji} {name}")
     }
 }
 
@@ -137,7 +159,7 @@ impl fmt::Display for CosmosAuthMethod {
             CosmosAuthMethod::ConnectionString => ("🔑", "Connection String"),
             CosmosAuthMethod::AzureAD => ("🆔", "Azure AD"),
         };
-        write!(f, "{} {}", emoji, name)
+        write!(f, "{emoji} {name}")
     }
 }
 
@@ -152,10 +174,7 @@ impl CosmosConfig {
                 let after_protocol = &self.uri[start + 3..];
                 if let Some(end) = after_protocol.find('.') {
                     let account_name = &after_protocol[..end];
-                    format!(
-                        "https://{}.documents.azure.com:443/ (✅ Configured)",
-                        account_name
-                    )
+                    format!("https://{account_name}.documents.azure.com:443/ (✅ Configured)")
                 } else {
                     "✅ Configured (URI format)".to_string()
                 }
@@ -288,13 +307,18 @@ pub enum ConfigError {
 
 impl AppConfig {
     /// Load configuration from environment variables with fallback defaults
+    ///
+    /// # Errors
+    ///
+    /// Returns a `ConfigError` if required environment variables are missing,
+    /// contain invalid values, or if parsing of numeric values fails.
     pub fn from_env() -> Result<Self, ConfigError> {
         {
             // Try to load .env file, but don't fail if it doesn't exist
             if let Err(e) = dotenv::dotenv() {
                 // Only log if the error is NOT "file not found"
                 if !e.to_string().contains("No such file or directory") {
-                    logging::console_log(&format!("Warning: Could not load .env file: {}", e));
+                    logging::console_log(&format!("Warning: Could not load .env file: {e}"));
                 }
             } else {
                 logging::console_log("Loaded environment variables from .env file");
@@ -352,8 +376,7 @@ impl AppConfig {
                 .cloned()
                 .unwrap_or_else(|| match server.environment {
                     Environment::Production => "info".to_string(),
-                    Environment::Staging => "debug".to_string(),
-                    Environment::Development => "debug".to_string(),
+                    Environment::Staging | Environment::Development => "debug".to_string(),
                 }),
             format: Self::parse_log_format(
                 &env_vars
@@ -363,11 +386,33 @@ impl AppConfig {
             )?,
         };
 
+        // email is specified in env varialbles as EMAIL_<assignee>=<email>
+        let emails = env_vars
+            .iter()
+            .filter_map(|(key, value)| {
+                if key.starts_with("EMAIL_") {
+                    let assignee_str = &key[6..]; // Remove "EMAIL_" prefix
+                    if let Ok(assignee) = TodoAssignee::from_str(assignee_str) {
+                        println!("Found email for assignee: {assignee_str} = {value}");
+                        Some((assignee, value.clone()))
+                    } else {
+                        logging::console_log(&format!(
+                            "Warning: Invalid email assignee '{assignee_str}', skipping"
+                        ));
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         Ok(AppConfig {
             cosmos,
             auth,
             server,
             logging,
+            emails,
         })
     }
 
@@ -377,7 +422,7 @@ impl AppConfig {
 
     fn get_required_env_var(name: &str) -> Result<String, ConfigError> {
         env::var(name).map_err(|_| {
-            let config_line = format!("{}=<missing>", name);
+            let config_line = format!("{name}=<missing>");
             ConfigError::MissingRequired {
                 name: name.to_string(),
                 src: config_line.clone(),
@@ -408,7 +453,7 @@ impl AppConfig {
             return Err(ConfigError::InvalidValue {
                 value: addr.to_string(),
                 expected: "host:port format (e.g., 0.0.0.0:3000)".to_string(),
-                src: format!("LEPTOS_SITE_ADDR={}", addr),
+                src: format!("LEPTOS_SITE_ADDR={addr}"),
                 span: (17, addr.len()).into(),
             });
         }
@@ -434,7 +479,7 @@ impl AppConfig {
             _ => Err(ConfigError::InvalidValue {
                 value: env_str.to_string(),
                 expected: "development, staging, or production".to_string(),
-                src: format!("ENVIRONMENT={}", env_str),
+                src: format!("ENVIRONMENT={env_str}"),
                 span: (12, env_str.len()).into(),
             }),
         }
@@ -447,28 +492,37 @@ impl AppConfig {
             _ => Err(ConfigError::InvalidValue {
                 value: format_str.to_string(),
                 expected: "json or pretty".to_string(),
-                src: format!("LOG_FORMAT={}", format_str),
+                src: format!("LOG_FORMAT={format_str}"),
                 span: (11, format_str.len()).into(),
             }),
         }
     }
 
     /// Get the full server address
+    #[must_use]
     pub fn server_address(&self) -> String {
         format!("{}:{}", self.server.host, self.server.port)
     }
 
     /// Check if running in production
+    #[must_use]
     pub fn is_production(&self) -> bool {
         matches!(self.server.environment, Environment::Production)
     }
 
     /// Check if running in development
+    #[must_use]
     pub fn is_development(&self) -> bool {
         matches!(self.server.environment, Environment::Development)
     }
 
     /// Validate configuration
+    ///
+    /// # Errors
+    ///
+    /// Returns a `ConfigError` if any configuration values are invalid,
+    /// such as empty username, password too short, invalid port number,
+    /// or insufficient Cosmos DB throughput.
     pub fn validate(&self) -> Result<(), ConfigError> {
         // Validate authentication
         if self.auth.username.is_empty() {
@@ -518,18 +572,30 @@ impl AppConfig {
 }
 
 // Global configuration instance
-static APP_CONFIG: Lazy<Result<AppConfig, ConfigError>> = Lazy::new(|| {
-    let config = AppConfig::from_env()?;
-    config.validate()?;
-    Ok(config)
-});
+static APP_CONFIG: std::sync::LazyLock<Result<AppConfig, ConfigError>> =
+    std::sync::LazyLock::new(|| {
+        let config = AppConfig::from_env()?;
+        config.validate()?;
+        Ok(config)
+    });
 
 /// Get the global application configuration
+///
+/// Returns a reference to the global application configuration instance.
+///
+/// # Errors
+///
+/// Returns a reference to a `ConfigError` if the configuration couldn't be loaded
+/// or validation failed.
 pub fn get_config() -> Result<&'static AppConfig, &'static ConfigError> {
     APP_CONFIG.as_ref()
 }
 
 /// Initialize and validate configuration at startup with pretty error reporting
+///
+/// # Errors
+///
+/// Returns a `miette::Error` if the configuration couldn't be loaded or validation failed.
 pub fn initialize_config() -> miette::Result<()> {
     match get_config() {
         Ok(config) => {
@@ -541,7 +607,7 @@ pub fn initialize_config() -> miette::Result<()> {
             Ok(())
         }
         Err(e) => {
-            logging::console_error(&format!("Configuration validation failed: {}", e));
+            logging::console_error(&format!("Configuration validation failed: {e}"));
             Err(miette::miette!(e))
         }
     }

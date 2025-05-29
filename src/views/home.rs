@@ -1,8 +1,9 @@
 use std::str::FromStr;
 
-use crate::app::create_todo_server;
+use crate::app::{create_todo_server, delete_todo_server, get_todos_server, update_todo_server};
 use crate::todo::{Todo, TodoAssignee, TodoStatus};
 use chrono::{Datelike, Local, NaiveDate, TimeZone};
+use leptos::web_sys;
 use leptos::{ev, prelude::*};
 
 #[component]
@@ -13,18 +14,19 @@ pub fn HomePage() -> impl IntoView {
     let (todos, set_todos) = signal(Vec::<Todo>::new());
 
     // Loading and error states
-    let (loading, _) = signal(false);
+    let (loading, set_loading) = signal(true);
     let (error_message, set_error_message) = signal(String::new());
 
-    // Modal state for creating new todos
+    // Modal state for creating/editing todos
     let (show_modal, set_show_modal) = signal(false);
+    let (editing_todo, set_editing_todo) = signal(None::<Todo>);
 
     // Calendar state
     let (current_month, set_current_month) = signal(Local::now().month());
     let (current_year, set_current_year) = signal(Local::now().year());
     let today = Local::now().date_naive();
 
-    // Form fields for new todo
+    // Form fields for new/edit todo
     let (new_title, set_new_title) = signal(String::new());
     let (new_description, set_new_description) = signal(String::new());
     let (new_due_date, set_new_due_date) = signal(String::new());
@@ -40,9 +42,29 @@ pub fn HomePage() -> impl IntoView {
         set_new_due_time.set(String::new());
         set_new_assignee.set("Mikko".to_string());
         set_new_status.set("Not Started".to_string());
+        set_editing_todo.set(None);
     };
 
-    // Calendar helper functions
+    // Helper to populate form with existing todo data
+    let populate_form = move |todo: &Todo| {
+        set_new_title.set(todo.title.clone());
+        set_new_description.set(todo.description.clone().unwrap_or_default());
+        set_new_assignee.set(todo.assignee.as_str().to_string());
+        set_new_status.set(todo.status.as_str().to_string());
+
+        if let Some(timestamp) = todo.due_date {
+            if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp, 0) {
+                let local_datetime = datetime.with_timezone(&chrono::Local);
+                set_new_due_date.set(local_datetime.format("%Y-%m-%d").to_string());
+                set_new_due_time.set(local_datetime.format("%H:%M").to_string());
+            }
+        } else {
+            set_new_due_date.set(String::new());
+            set_new_due_time.set(String::new());
+        }
+    };
+
+    // ...existing calendar helper functions...
     let get_month_name = |month: u32| -> &'static str {
         match month {
             1 => "January",
@@ -103,10 +125,97 @@ pub fn HomePage() -> impl IntoView {
         }
     };
 
-    // Create todo handler
+    // Actions
+    let load_todos_action = Action::new(move |(): &()| async move { get_todos_server().await });
     let create_todo_action = Action::new(move |todo: &Todo| {
         let todo = todo.clone();
         async move { create_todo_server(todo).await }
+    });
+    let update_todo_action = Action::new(move |todo: &Todo| {
+        let todo = todo.clone();
+        async move { update_todo_server(todo).await }
+    });
+    let delete_todo_action = Action::new(move |id: &String| {
+        let id = id.clone();
+        async move { delete_todo_server(id).await }
+    });
+
+    // Load todos on component mount
+    Effect::new(move |_| {
+        load_todos_action.dispatch(());
+    });
+
+    // Watch for load todos results
+    Effect::new(move |_| {
+        if let Some(result) = load_todos_action.value().get() {
+            match result {
+                Ok(todos_list) => {
+                    set_todos.set(todos_list);
+                    set_loading.set(false);
+                    set_error_message.set(String::new());
+                }
+                Err(e) => {
+                    set_error_message.set(format!("Failed to load todos: {e}"));
+                    set_loading.set(false);
+                }
+            }
+        }
+    });
+
+    // Watch for create todo results
+    Effect::new(move |_| {
+        if let Some(result) = create_todo_action.value().get() {
+            match result {
+                Ok(created_todo) => {
+                    set_todos.update(|todos| {
+                        todos.push(created_todo);
+                    });
+                    reset_form();
+                    set_show_modal.set(false);
+                    set_error_message.set(String::new());
+                }
+                Err(e) => {
+                    set_error_message.set(format!("Failed to create todo: {e}"));
+                }
+            }
+        }
+    });
+
+    // Watch for update todo results
+    Effect::new(move |_| {
+        if let Some(result) = update_todo_action.value().get() {
+            match result {
+                Ok(updated_todo) => {
+                    set_todos.update(|todos| {
+                        if let Some(index) = todos.iter().position(|t| t.id == updated_todo.id) {
+                            todos[index] = updated_todo;
+                        }
+                    });
+                    reset_form();
+                    set_show_modal.set(false);
+                    set_error_message.set(String::new());
+                }
+                Err(e) => {
+                    set_error_message.set(format!("Failed to update todo: {e}"));
+                }
+            }
+        }
+    });
+
+    // Watch for delete todo results
+    Effect::new(move |_| {
+        if let Some(result) = delete_todo_action.value().get() {
+            match result {
+                Ok(_) => {
+                    // Reload todos after successful delete
+                    load_todos_action.dispatch(());
+                    set_error_message.set(String::new());
+                }
+                Err(e) => {
+                    set_error_message.set(format!("Failed to delete todo: {e}"));
+                }
+            }
+        }
     });
 
     // Handle form submission
@@ -143,8 +252,8 @@ pub fn HomePage() -> impl IntoView {
             }
         };
 
-        let new_todo = Todo {
-            id: 0,
+        let todo = Todo {
+            id: editing_todo.get_untracked().map_or(0, |t| t.id),
             title: title.trim().to_string(),
             description: if new_description.get_untracked().trim().is_empty() {
                 None
@@ -159,29 +268,17 @@ pub fn HomePage() -> impl IntoView {
         };
 
         set_error_message.set(String::new());
-        create_todo_action.dispatch(new_todo);
+
+        if editing_todo.get_untracked().is_some() {
+            update_todo_action.dispatch(todo);
+        } else {
+            create_todo_action.dispatch(todo);
+        }
     };
 
-    // Watch for action results
-    Effect::new(move |_| {
-        if let Some(result) = create_todo_action.value().get() {
-            match result {
-                Ok(created_todo) => {
-                    set_todos.update(|todos| {
-                        todos.push(created_todo);
-                    });
-                    reset_form();
-                    set_show_modal.set(false);
-                    set_error_message.set(String::new());
-                }
-                Err(e) => {
-                    set_error_message.set(format!("Failed to create todo: {}", e));
-                }
-            }
-        }
-    });
-
     let is_creating = move || create_todo_action.pending().get();
+    let is_updating = move || update_todo_action.pending().get();
+    let is_deleting = move || delete_todo_action.pending().get();
 
     let format_due_date = |timestamp: i64| -> String {
         if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp, 0) {
@@ -220,7 +317,7 @@ pub fn HomePage() -> impl IntoView {
 
             // Main content grid
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                // Calendar section
+                // Calendar section (keeping existing calendar code)
                 <div class="lg:col-span-1">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div class="flex justify-between items-center mb-4">
@@ -312,7 +409,7 @@ pub fn HomePage() -> impl IntoView {
                     </div>
                 </div>
 
-                // Todo list section
+                // Todo list section with edit/delete buttons
                 <div class="lg:col-span-2">
                     <Show when=move || loading.get()>
                         <div class="flex justify-center items-center py-8">
@@ -350,6 +447,9 @@ pub fn HomePage() -> impl IntoView {
                                     view! {
                                         <div class="grid gap-4">
                                             {todos_list.into_iter().map(|todo| {
+                                                let todo_clone = todo.clone();
+                                                let todo_id = todo.id;
+
                                                 let status_color = match todo.status {
                                                     TodoStatus::NotStarted => "bg-gray-100 text-gray-800",
                                                     TodoStatus::Completed => "bg-green-100 text-green-800",
@@ -364,9 +464,44 @@ pub fn HomePage() -> impl IntoView {
                                                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
                                                         <div class="flex justify-between items-start mb-3">
                                                             <h3 class="text-lg font-semibold text-gray-900">{todo.title.clone()}</h3>
-                                                            <span class={format!("px-2 py-1 text-xs font-medium rounded-full {}", status_color)}>
-                                                                {todo.status.as_str()}
-                                                            </span>
+                                                            <div class="flex items-center gap-2">
+                                                                <span class={format!("px-2 py-1 text-xs font-medium rounded-full {status_color}")}>
+                                                                    {todo.status.as_str()}
+                                                                </span>
+                                                                <div class="flex gap-1">
+                                                                    <button
+                                                                        on:click=move |_| {
+                                                                            populate_form(&todo_clone);
+                                                                            set_editing_todo.set(Some(todo_clone.clone()));
+                                                                            set_show_modal.set(true);
+                                                                        }
+                                                                        class="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                                        title="Edit todo"
+                                                                    >
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                    <button
+                                                                        on:click=move |_| {
+                                                                            if web_sys::window()
+                                                                                .unwrap()
+                                                                                .confirm_with_message("Are you sure you want to delete this todo?")
+                                                                                .unwrap_or(false)
+                                                                            {
+                                                                                delete_todo_action.dispatch(todo_id.to_string());
+                                                                            }
+                                                                        }
+                                                                        class="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                                        title="Delete todo"
+                                                                        disabled=is_deleting
+                                                                    >
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         </div>
 
                                                         {todo.description.as_ref().map(|desc| view! {
@@ -374,7 +509,7 @@ pub fn HomePage() -> impl IntoView {
                                                         })}
 
                                                         <div class="flex flex-wrap gap-2 items-center">
-                                                            <span class={format!("px-2 py-1 text-xs font-medium rounded-full {}", assignee_color)}>
+                                                            <span class={format!("px-2 py-1 text-xs font-medium rounded-full {assignee_color}")}>
                                                                 {todo.assignee.as_str()}
                                                             </span>
 
@@ -396,12 +531,14 @@ pub fn HomePage() -> impl IntoView {
                 </div>
             </div>
 
-            // Modal for creating new todo (keeping existing modal code)
+            // Modal for creating/editing todos
             <Show when=move || show_modal.get()>
                 <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
                         <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-xl font-bold text-gray-800">"Create New Todo"</h2>
+                            <h2 class="text-xl font-bold text-gray-800">
+                                {move || if editing_todo.get().is_some() { "Edit Todo" } else { "Create New Todo" }}
+                            </h2>
                             <button
                                 on:click=move |_| set_show_modal.set(false)
                                 class="text-gray-500 hover:text-gray-700 text-2xl leading-none"
@@ -502,22 +639,25 @@ pub fn HomePage() -> impl IntoView {
                             <div class="flex gap-3">
                                 <button
                                     type="button"
-                                    on:click=move |_| set_show_modal.set(false)
+                                    on:click=move |_| {
+                                        reset_form();
+                                        set_show_modal.set(false);
+                                    }
                                     class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                                    disabled=is_creating
+                                    disabled=move || is_creating() || is_updating()
                                 >
                                     "Cancel"
                                 </button>
                                 <button
                                     type="submit"
                                     class="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white rounded-lg hover:from-purple-600 hover:to-fuchsia-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled=is_creating
+                                    disabled=move || is_creating() || is_updating()
                                 >
                                     <Show
-                                        when=is_creating
-                                        fallback=|| "Create Todo"
+                                        when=move || is_creating() || is_updating()
+                                        fallback=move || if editing_todo.get().is_some() { "Update Todo" } else { "Create Todo" }
                                     >
-                                        "Creating..."
+                                        {move || if editing_todo.get().is_some() { "Updating..." } else { "Creating..." }}
                                     </Show>
                                 </button>
                             </div>

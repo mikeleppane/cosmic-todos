@@ -2,7 +2,7 @@
 use chrono::{DateTime, Duration, Utc};
 
 use leptos::prelude::*;
-use leptos::*;
+use leptos::web_sys;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;

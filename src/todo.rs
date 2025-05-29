@@ -1,10 +1,10 @@
+use std::fmt::Display;
 use std::str::FromStr;
 
 use chrono::{DateTime, Local, TimeZone};
 use serde::{Deserialize, Serialize};
-
 // Enhanced Todo struct with additional fields
-#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
+#[derive(Clone, Debug, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum TodoStatus {
     NotStarted,
     Completed,
@@ -38,7 +38,7 @@ impl FromStr for TodoStatus {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum TodoAssignee {
     Mikko,
     Niina,
@@ -53,18 +53,24 @@ impl TodoAssignee {
     }
 }
 
+impl Display for TodoAssignee {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 impl FromStr for TodoAssignee {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Niina" => Ok(TodoAssignee::Niina),
+            "niina" => Ok(TodoAssignee::Niina),
             _ => Ok(TodoAssignee::Mikko), // Default to Mikko for unknown values
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Todo {
     pub id: usize,
     pub title: String,
