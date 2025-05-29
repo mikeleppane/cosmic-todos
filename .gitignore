@@ -44,3 +44,9 @@ yarn-error.log*
 *.log
 logs/
 **.Identifier
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+.venv/
