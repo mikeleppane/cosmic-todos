@@ -72,7 +72,7 @@ impl FromStr for TodoAssignee {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Todo {
-    pub id: usize,
+    pub id: String,
     pub title: String,
     pub description: Option<String>,
     pub due_date: Option<i64>, // Unix timestamp in seconds

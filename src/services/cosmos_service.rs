@@ -4,7 +4,6 @@ use futures::stream::TryStreamExt;
 use leptos::leptos_dom::logging;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use uuid::Uuid;
 
 use crate::{
     config::get_config,
@@ -41,7 +40,7 @@ impl CosmosDbTodo {
             .ok_or("Assignee email not found")?;
 
         Ok(Self {
-            id: Uuid::new_v4().to_string(),
+            id: todo.id,
             title: todo.title,
             description: todo.description,
             due_date: todo.due_date,
@@ -58,7 +57,7 @@ impl CosmosDbTodo {
 impl From<CosmosDbTodo> for Todo {
     fn from(cosmos_todo: CosmosDbTodo) -> Self {
         Self {
-            id: cosmos_todo.id.parse().unwrap_or(0), // Convert string ID back to usize for UI
+            id: cosmos_todo.id.parse().unwrap_or(String::new()), // Convert string ID back to usize for UI
             title: cosmos_todo.title,
             description: cosmos_todo.description,
             due_date: cosmos_todo.due_date,
@@ -107,7 +106,7 @@ impl CosmosService {
         &self,
         todo: Todo,
     ) -> Result<Todo, Box<dyn std::error::Error + Send + Sync>> {
-        let todo2 = todo.clone();
+        let todo_cloned = todo.clone();
         let cosmos_todo = CosmosDbTodo::try_from_todo(todo)?;
 
         let database = self.client.database_client(&self.database_name);
@@ -118,10 +117,8 @@ impl CosmosService {
             .await
         {
             Ok(_) => {
-                logging::console_log("SUCCESS");
-                //let value: CosmosDbTodo = response.into_json_body().await?;
-                logging::console_log("Created todo in Cosmos DB: {:?}");
-                Ok(todo2)
+                logging::console_log(&format!("Created todo in Cosmos DB: {todo_cloned:#?}",));
+                Ok(todo_cloned)
             }
             Err(e) => {
                 logging::console_error("ERROR");
@@ -186,10 +183,12 @@ impl CosmosService {
             .await
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
-        response
-            .into_json_body()
-            .await
-            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+        if !response.status().is_success() {
+            let error_msg = format!("Failed to update todo in Cosmos DB: {}", response.status());
+            logging::console_error(&error_msg);
+            return Err(Box::new(std::io::Error::other(error_msg)));
+        }
+        Ok(cosmos_todo)
     }
 
     /// Deletes a todo item from the Cosmos DB container

@@ -49,7 +49,12 @@ pub fn App() -> impl IntoView {
         // sets the document title
         <Title text="Family Leppänen Todos" />
 
-        <Link rel="icon" type_="image/png" sizes="64x64" href="/images/familyleppanen-logo-64x64.png"/>
+        <Link
+            rel="icon"
+            type_="image/png"
+            sizes="64x64"
+            href="/images/familyleppanen-logo-64x64.png"
+        />
 
         // content for this welcome page
         <Router>

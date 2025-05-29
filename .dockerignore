@@ -1,3 +1,5 @@
+functions/
+end2end/
 # Git
 .git
 .gitignore
@@ -162,3 +164,8 @@ demo/
 *.ai
 *.sketch
 *.fig
+
+# Python virtual environments
+venv/
+.mypy_cache/
+__pycache__/

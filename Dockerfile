@@ -1,5 +1,5 @@
 # If you’re using stable, use this instead
-FROM rust:1.86 AS builder
+FROM rust:1.87 AS builder
 
 # Install cargo-binstall, which makes it easier to install other
 # cargo extensions like cargo-leptos
@@ -7,9 +7,12 @@ RUN wget -q https://github.com/cargo-bins/cargo-binstall/releases/latest/downloa
     && tar -xvf cargo-binstall-x86_64-unknown-linux-musl.tgz \
     && cp cargo-binstall /usr/local/cargo/bin
 
+# install mold linker, which is a faster linker
+
+
 # Install required tools
 RUN apt-get update -y \
-  && apt-get install -y --no-install-recommends clang curl
+  && apt-get install -y --no-install-recommends clang curl mold
 
 # Install Node.js
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]

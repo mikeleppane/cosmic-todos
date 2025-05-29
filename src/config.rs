@@ -390,8 +390,7 @@ impl AppConfig {
         let emails = env_vars
             .iter()
             .filter_map(|(key, value)| {
-                if key.starts_with("EMAIL_") {
-                    let assignee_str = &key[6..]; // Remove "EMAIL_" prefix
+                if let Some(assignee_str) = key.strip_prefix("EMAIL_") {
                     if let Ok(assignee) = TodoAssignee::from_str(assignee_str) {
                         println!("Found email for assignee: {assignee_str} = {value}");
                         Some((assignee, value.clone()))

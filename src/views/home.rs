@@ -5,9 +5,10 @@ use crate::todo::{Todo, TodoAssignee, TodoStatus};
 use chrono::{Datelike, Local, NaiveDate, TimeZone};
 use leptos::web_sys;
 use leptos::{ev, prelude::*};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq)]
-enum SortBy {
+pub enum SortBy {
     Title,
     DueDate,
     Status,
@@ -32,9 +33,146 @@ impl SortBy {
             "due_date" => SortBy::DueDate,
             "status" => SortBy::Status,
             "assignee" => SortBy::Assignee,
-            "created_date" => SortBy::CreatedDate,
             _ => SortBy::CreatedDate,
         }
+    }
+}
+
+#[component]
+#[allow(clippy::must_use_candidate)]
+#[allow(clippy::too_many_lines)]
+pub fn SearchAndFilters(
+    search_term: ReadSignal<String>,
+    set_search_term: WriteSignal<String>,
+    filter_status: ReadSignal<String>,
+    set_filter_status: WriteSignal<String>,
+    filter_assignee: ReadSignal<String>,
+    set_filter_assignee: WriteSignal<String>,
+    sort_by: ReadSignal<SortBy>,
+    set_sort_by: WriteSignal<SortBy>,
+    sort_ascending: ReadSignal<bool>,
+    set_sort_ascending: WriteSignal<bool>,
+    total_todos: usize,
+    filtered_todos: usize,
+) -> impl IntoView {
+    let clear_filters = move |_| {
+        set_search_term.set(String::new());
+        set_filter_status.set("All".to_string());
+        set_filter_assignee.set("All".to_string());
+    };
+
+    view! {
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
+            // Search bar
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    "Search todos"
+                </label>
+                <div class="relative">
+                    <input
+                        type="text"
+                        prop:value=move || search_term.get()
+                        on:input=move |ev| set_search_term.set(event_target_value(&ev))
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Search by title or description..."
+                    />
+                    <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+            </div>
+
+            // Filters and sorting row
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                // Status filter
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        "Status"
+                    </label>
+                    <select
+                        prop:value=move || filter_status.get()
+                        on:change=move |ev| set_filter_status.set(event_target_value(&ev))
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    >
+                        <option value="All">"All Status"</option>
+                        <option value="Not Started">"Not Started"</option>
+                        <option value="In Progress">"In Progress"</option>
+                        <option value="Completed">"Completed"</option>
+                        <option value="Blocked">"Blocked"</option>
+                    </select>
+                </div>
+
+                // Assignee filter
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        "Assignee"
+                    </label>
+                    <select
+                        prop:value=move || filter_assignee.get()
+                        on:change=move |ev| set_filter_assignee.set(event_target_value(&ev))
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    >
+                        <option value="All">"All Assignees"</option>
+                        <option value="Mikko">"Mikko"</option>
+                        <option value="Niina">"Niina"</option>
+                    </select>
+                </div>
+
+                // Sort by
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        "Sort by"
+                    </label>
+                    <select
+                        prop:value=move || sort_by.get().as_str()
+                        on:change=move |ev| set_sort_by.set(SortBy::from_str(&event_target_value(&ev)))
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    >
+                        <option value="created_date">"Created Date"</option>
+                        <option value="title">"Title"</option>
+                        <option value="due_date">"Due Date"</option>
+                        <option value="status">"Status"</option>
+                        <option value="assignee">"Assignee"</option>
+                    </select>
+                </div>
+
+                // Sort order toggle
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        "Order"
+                    </label>
+                    <button
+                        on:click=move |_| set_sort_ascending.update(|asc| *asc = !*asc)
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-2"
+                    >
+                        {move || if sort_ascending.get() { "Ascending" } else { "Descending" }}
+                        <svg class={format!("w-4 h-4 transition-transform {}", if sort_ascending.get() { "rotate-0" } else { "rotate-180" })} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            // Results count and clear filters
+            <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                <p class="text-sm text-gray-600">
+                    {format!("Showing {filtered_todos} of {total_todos} todos")}
+                </p>
+
+                <Show when=move || {
+                    !search_term.get().is_empty()
+                    || filter_status.get() != "All"
+                    || filter_assignee.get() != "All"
+                }>
+                    <button
+                        on:click=clear_filters
+                        class="px-3 py-1 text-sm text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+                    >
+                        "Clear Filters"
+                    </button>
+                </Show>
+            </div>
+        </div>
     }
 }
 
@@ -118,7 +256,7 @@ pub fn HomePage() -> impl IntoView {
                 || todo
                     .description
                     .as_ref()
-                    .map_or(false, |desc| desc.to_lowercase().contains(&search));
+                    .is_some_and(|desc| desc.to_lowercase().contains(&search));
 
             // Status filter
             let matches_status = status_filter == "All" || todo.status.as_str() == status_filter;
@@ -158,17 +296,55 @@ pub fn HomePage() -> impl IntoView {
         todos_list
     };
 
-    // Toggle sort order for the same field
-    let _handle_sort_change = move |new_sort: SortBy| {
-        if sort_by.get() == new_sort {
-            set_sort_ascending.update(|asc| *asc = !*asc);
+    let grouped_todos = move || {
+        use std::collections::BTreeMap;
+
+        let todos_list = filtered_and_sorted_todos();
+        let mut groups: BTreeMap<String, Vec<Todo>> = BTreeMap::new();
+
+        for todo in todos_list {
+            let group_key = if let Some(due_timestamp) = todo.due_date {
+                if let Some(datetime) = chrono::DateTime::from_timestamp(due_timestamp, 0) {
+                    let local_datetime = datetime.with_timezone(&chrono::Local);
+                    local_datetime.format("%Y-%m").to_string()
+                } else {
+                    "No Due Date".to_string()
+                }
+            } else {
+                "No Due Date".to_string()
+            };
+
+            groups.entry(group_key).or_default().push(todo);
+        }
+
+        // Sort todos within each group by due date
+        for todos in groups.values_mut() {
+            todos.sort_by(|a, b| {
+                match (a.due_date, b.due_date) {
+                    (Some(a_date), Some(b_date)) => a_date.cmp(&b_date),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => a.title.cmp(&b.title), // Fallback to title if no dates
+                }
+            });
+        }
+
+        groups
+    };
+
+    let format_month_header = |month_key: &str| -> String {
+        if month_key == "No Due Date" {
+            "No Due Date".to_string()
+        } else if let Ok(date) =
+            chrono::NaiveDate::parse_from_str(&format!("{month_key}-01"), "%Y-%m-%d")
+        {
+            date.format("%B %Y").to_string()
         } else {
-            set_sort_by.set(new_sort);
-            set_sort_ascending.set(true);
+            month_key.to_string()
         }
     };
 
-    // ...existing calendar helper functions...
+    // Calendar helper functions
     let get_month_name = |month: u32| -> &'static str {
         match month {
             1 => "January",
@@ -266,7 +442,6 @@ pub fn HomePage() -> impl IntoView {
         }
     });
 
-    // ...existing code...
     // Watch for create todo results
     Effect::new(move |_| {
         if let Some(result) = create_todo_action.value().get() {
@@ -311,7 +486,7 @@ pub fn HomePage() -> impl IntoView {
     Effect::new(move |_| {
         if let Some(result) = delete_todo_action.value().get() {
             match result {
-                Ok(_) => {
+                Ok(()) => {
                     // Reload todos after successful delete
                     load_todos_action.dispatch(());
                     set_error_message.set(String::new());
@@ -358,7 +533,9 @@ pub fn HomePage() -> impl IntoView {
         };
 
         let todo = Todo {
-            id: editing_todo.get_untracked().map_or(0, |t| t.id),
+            id: editing_todo
+                .get_untracked()
+                .map_or(Uuid::new_v4().to_string(), |t| t.id),
             title: title.trim().to_string(),
             description: if new_description.get_untracked().trim().is_empty() {
                 None
@@ -406,14 +583,12 @@ pub fn HomePage() -> impl IntoView {
 
             // Header with create button
             <div class="flex justify-between items-center mb-6">
-                    <img
+                <img
                     src="/images/familyleppanen-logo.png"
                     alt="Family Todos Logo"
                     class="h-10 w-auto"
-                    // make the size reasonable now it is 1024x1024, 256x256
                     style="width: 50px; height: 50px;"
-
-                    />
+                />
                 <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
                     "Family Todos"
                 </h1>
@@ -430,7 +605,7 @@ pub fn HomePage() -> impl IntoView {
 
             // Main content grid
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                // Calendar section (keeping existing calendar code)
+                // Calendar section
                 <div class="lg:col-span-1">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div class="flex justify-between items-center mb-4">
@@ -459,7 +634,6 @@ pub fn HomePage() -> impl IntoView {
 
                         // Calendar grid
                         <div class="grid grid-cols-7 gap-1 mb-2">
-                            // Day headers
                             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].iter().map(|day| {
                                 view! {
                                     <div class="p-2 text-center text-xs font-medium text-gray-500">
@@ -477,14 +651,12 @@ pub fn HomePage() -> impl IntoView {
                                 let first_day = get_first_day_of_month(year, month);
                                 let mut calendar_days = Vec::new();
 
-                                // Empty cells for days before the first day of the month
                                 for _ in 0..first_day {
                                     calendar_days.push(view! {
                                         <div class="p-2 h-8">{String::new()}</div>
                                     });
                                 }
 
-                                // Days of the month
                                 for day in 1..=days_in_month {
                                     let is_today = if let Some(current_date) = NaiveDate::from_ymd_opt(year, month, day) {
                                         current_date == today
@@ -510,7 +682,6 @@ pub fn HomePage() -> impl IntoView {
                             }}
                         </div>
 
-                        // Today's date display
                         <div class="mt-4 pt-4 border-t border-gray-100">
                             <p class="text-sm text-gray-600 text-center">
                                 "Today: "
@@ -522,111 +693,23 @@ pub fn HomePage() -> impl IntoView {
                     </div>
                 </div>
 
-                // Todo list section with search, filters, and sorting
+                // Todo list section
                 <div class="lg:col-span-2">
                     // Search and filter controls
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4">
-                        // Search bar
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                "Search todos"
-                            </label>
-                            <div class="relative">
-                                <input
-                                    type="text"
-                                    prop:value=move || search_term.get()
-                                    on:input=move |ev| set_search_term.set(event_target_value(&ev))
-                                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                    placeholder="Search by title or description..."
-                                />
-                                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                </svg>
-                            </div>
-                        </div>
-
-                        // Filters and sorting row
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            // Status filter
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    "Status"
-                                </label>
-                                <select
-                                    prop:value=move || filter_status.get()
-                                    on:change=move |ev| set_filter_status.set(event_target_value(&ev))
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                                >
-                                    <option value="All">"All Status"</option>
-                                    <option value="Not Started">"Not Started"</option>
-                                    <option value="In Progress">"In Progress"</option>
-                                    <option value="Completed">"Completed"</option>
-                                    <option value="Blocked">"Blocked"</option>
-                                </select>
-                            </div>
-
-                            // Assignee filter
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    "Assignee"
-                                </label>
-                                <select
-                                    prop:value=move || filter_assignee.get()
-                                    on:change=move |ev| set_filter_assignee.set(event_target_value(&ev))
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                                >
-                                    <option value="All">"All Assignees"</option>
-                                    <option value="Mikko">"Mikko"</option>
-                                    <option value="Niina">"Niina"</option>
-                                </select>
-                            </div>
-
-                            // Sort by
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    "Sort by"
-                                </label>
-                                <select
-                                    prop:value=move || sort_by.get().as_str()
-                                    on:change=move |ev| set_sort_by.set(SortBy::from_str(&event_target_value(&ev)))
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                                >
-                                    <option value="created_date">"Created Date"</option>
-                                    <option value="title">"Title"</option>
-                                    <option value="due_date">"Due Date"</option>
-                                    <option value="status">"Status"</option>
-                                    <option value="assignee">"Assignee"</option>
-                                </select>
-                            </div>
-
-                            // Sort order toggle
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    "Order"
-                                </label>
-                                <button
-                                    on:click=move |_| set_sort_ascending.update(|asc| *asc = !*asc)
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center justify-center gap-2"
-                                >
-                                    {move || if sort_ascending.get() { "Ascending" } else { "Descending" }}
-                                    <svg class={format!("w-4 h-4 transition-transform {}", if sort_ascending.get() { "rotate-0" } else { "rotate-180" })} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        // Results count
-                        <div class="mt-3 pt-3 border-t border-gray-100">
-                            <p class="text-sm text-gray-600">
-                                {move || {
-                                    let filtered_count = filtered_and_sorted_todos().len();
-                                    let total_count = todos.get().len();
-                                    format!("Showing {} of {} todos", filtered_count, total_count)
-                                }}
-                            </p>
-                        </div>
-                    </div>
+                    <SearchAndFilters
+                        search_term=search_term
+                        set_search_term=set_search_term
+                        filter_status=filter_status
+                        set_filter_status=set_filter_status
+                        filter_assignee=filter_assignee
+                        set_filter_assignee=set_filter_assignee
+                        sort_by=sort_by
+                        set_sort_by=set_sort_by
+                        sort_ascending=sort_ascending
+                        set_sort_ascending=set_sort_ascending
+                        total_todos=todos.get().len()
+                        filtered_todos=filtered_and_sorted_todos().len()
+                    />
 
                     <Show when=move || loading.get()>
                         <div class="flex justify-center items-center py-8">
@@ -636,10 +719,10 @@ pub fn HomePage() -> impl IntoView {
                     </Show>
 
                     <Show when=move || !loading.get()>
-                        <div class="space-y-4">
+                        <div class="space-y-6">
                             {move || {
-                                let todos_list = filtered_and_sorted_todos();
-                                if todos_list.is_empty() {
+                                let todos_groups = grouped_todos();
+                                if todos_groups.is_empty() {
                                     let has_filters = !search_term.get().is_empty()
                                         || filter_status.get() != "All"
                                         || filter_assignee.get() != "All";
@@ -690,79 +773,99 @@ pub fn HomePage() -> impl IntoView {
                                     }
                                 } else {
                                     view! {
-                                        <div class="grid gap-4">
-                                            {todos_list.into_iter().map(|todo| {
-                                                let todo_clone = todo.clone();
-                                                let todo_id = todo.id;
-
-                                                let status_color = match todo.status {
-                                                    TodoStatus::NotStarted => "bg-gray-100 text-gray-800",
-                                                    TodoStatus::Completed => "bg-green-100 text-green-800",
-                                                };
-
-                                                let assignee_color = match todo.assignee {
-                                                    TodoAssignee::Mikko => "bg-purple-100 text-purple-800",
-                                                    TodoAssignee::Niina => "bg-pink-100 text-pink-800",
-                                                };
-
+                                        <div class="space-y-6">
+                                            {todos_groups.into_iter().map(|(month_key, todos_in_month)| {
+                                                let month_header = format_month_header(&month_key);
                                                 view! {
-                                                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-                                                        <div class="flex justify-between items-start mb-3">
-                                                            <h3 class="text-lg font-semibold text-gray-900">{todo.title.clone()}</h3>
-                                                            <div class="flex items-center gap-2">
-                                                                <span class={format!("px-2 py-1 text-xs font-medium rounded-full {status_color}")}>
-                                                                    {todo.status.as_str()}
-                                                                </span>
-                                                                <div class="flex gap-1">
-                                                                    <button
-                                                                        on:click=move |_| {
-                                                                            populate_form(&todo_clone);
-                                                                            set_editing_todo.set(Some(todo_clone.clone()));
-                                                                            set_show_modal.set(true);
-                                                                        }
-                                                                        class="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                                        title="Edit todo"
-                                                                    >
-                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                                        </svg>
-                                                                    </button>
-                                                                    <button
-                                                                        on:click=move |_| {
-                                                                            if web_sys::window()
-                                                                                .unwrap()
-                                                                                .confirm_with_message("Are you sure you want to delete this todo?")
-                                                                                .unwrap_or(false)
-                                                                            {
-                                                                                delete_todo_action.dispatch(todo_id.to_string());
-                                                                            }
-                                                                        }
-                                                                        class="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                                        title="Delete todo"
-                                                                        disabled=is_deleting
-                                                                    >
-                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                                        </svg>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
+                                                    <div class="space-y-4">
+                                                        // Month header
+                                                        <div class="flex items-center gap-4">
+                                                            <h3 class="text-xl font-semibold text-gray-800">{month_header}</h3>
+                                                            <div class="flex-1 h-px bg-gradient-to-r from-purple-200 to-transparent"></div>
+                                                            <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                                                {format!("{} todos", todos_in_month.len())}
+                                                            </span>
                                                         </div>
 
-                                                        {todo.description.as_ref().map(|desc| view! {
-                                                            <p class="text-gray-600 mb-3">{desc.clone()}</p>
-                                                        })}
+                                                        // Todos in this month
+                                                        <div class="grid gap-4">
+                                                            {todos_in_month.into_iter().map(|todo| {
+                                                                let todo_clone = todo.clone();
+                                                                let todo_id = todo.id;
 
-                                                        <div class="flex flex-wrap gap-2 items-center">
-                                                            <span class={format!("px-2 py-1 text-xs font-medium rounded-full {assignee_color}")}>
-                                                                {todo.assignee.as_str()}
-                                                            </span>
+                                                                let status_color = match todo.status {
+                                                                    TodoStatus::NotStarted => "bg-gray-100 text-gray-800",
+                                                                    TodoStatus::Completed => "bg-green-100 text-green-800",
+                                                                };
 
-                                                            {todo.due_date.map(|timestamp| view! {
-                                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                                                    {format!("Due: {}", format_due_date(timestamp))}
-                                                                </span>
-                                                            })}
+                                                                let assignee_color = match todo.assignee {
+                                                                    TodoAssignee::Mikko => "bg-purple-100 text-purple-800",
+                                                                    TodoAssignee::Niina => "bg-pink-100 text-pink-800",
+                                                                };
+
+                                                                view! {
+                                                                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
+                                                                        <div class="flex justify-between items-start mb-3">
+                                                                            <h4 class="text-lg font-semibold text-gray-900">{todo.title.clone()}</h4>
+                                                                            <div class="flex items-center gap-2">
+                                                                                <span class={format!("px-2 py-1 text-xs font-medium rounded-full {status_color}")}>
+                                                                                    {todo.status.as_str()}
+                                                                                </span>
+                                                                                <div class="flex gap-1">
+                                                                                    <button
+                                                                                        on:click=move |_| {
+                                                                                            populate_form(&todo_clone);
+                                                                                            set_editing_todo.set(Some(todo_clone.clone()));
+                                                                                            set_show_modal.set(true);
+                                                                                        }
+                                                                                        class="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                                                        title="Edit todo"
+                                                                                    >
+                                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        on:click=move |_| {
+                                                                                            if let Some(window) = web_sys::window() {
+                                                                                                if window
+                                                                                                    .confirm_with_message("Are you sure you want to delete this todo?")
+                                                                                                    .unwrap_or(false)
+                                                                                                {
+                                                                                                    delete_todo_action.dispatch(todo_id.to_string());
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                        class="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                                                                        title="Delete todo"
+                                                                                        disabled=is_deleting
+                                                                                    >
+                                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                                        </svg>
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {todo.description.as_ref().map(|desc| view! {
+                                                                            <p class="text-gray-600 mb-3">{desc.clone()}</p>
+                                                                        })}
+
+                                                                        <div class="flex flex-wrap gap-2 items-center">
+                                                                            <span class={format!("px-2 py-1 text-xs font-medium rounded-full {assignee_color}")}>
+                                                                                {todo.assignee.as_str()}
+                                                                            </span>
+
+                                                                            {todo.due_date.map(|timestamp| view! {
+                                                                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                                                                    {format!("Due: {}", format_due_date(timestamp))}
+                                                                                </span>
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            }).collect::<Vec<_>>()}
                                                         </div>
                                                     </div>
                                                 }
@@ -793,7 +896,6 @@ pub fn HomePage() -> impl IntoView {
                         </div>
 
                         <form on:submit=handle_submit>
-                            // Title field
                             <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     "Title *"
@@ -808,7 +910,6 @@ pub fn HomePage() -> impl IntoView {
                                 />
                             </div>
 
-                            // Description field
                             <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     "Description"
@@ -822,7 +923,6 @@ pub fn HomePage() -> impl IntoView {
                                 />
                             </div>
 
-                            // Due date and time
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -848,7 +948,6 @@ pub fn HomePage() -> impl IntoView {
                                 </div>
                             </div>
 
-                            // Assignee dropdown
                             <div class="mb-4">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     "Assignee"
@@ -863,7 +962,6 @@ pub fn HomePage() -> impl IntoView {
                                 </select>
                             </div>
 
-                            // Status dropdown
                             <div class="mb-6">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     "Status"
@@ -880,7 +978,6 @@ pub fn HomePage() -> impl IntoView {
                                 </select>
                             </div>
 
-                            // Action buttons
                             <div class="flex gap-3">
                                 <button
                                     type="button"
