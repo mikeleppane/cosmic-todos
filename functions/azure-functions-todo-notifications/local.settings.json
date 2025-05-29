@@ -1,0 +1,10 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "COSMOS_CONNECTION_STRING": "",
+    "SENDGRID_API_KEY": "",
+    "SENDGRID_FROM_EMAIL": "noreply@familyleppanen.net"
+  }
+}
