@@ -62,7 +62,7 @@ impl From<CosmosDbTodo> for Todo {
             description: cosmos_todo.description,
             due_date: cosmos_todo.due_date,
             assignee: TodoAssignee::from_str(&cosmos_todo.assignee).unwrap_or(TodoAssignee::Mikko),
-            status: TodoStatus::from_str(&cosmos_todo.status).unwrap_or(TodoStatus::NotStarted),
+            status: TodoStatus::from_str(&cosmos_todo.status).unwrap_or(TodoStatus::Pending),
         }
     }
 }

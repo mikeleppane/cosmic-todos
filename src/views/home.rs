@@ -107,10 +107,8 @@ pub fn SearchAndFilters(
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                     >
                         <option value="All">"All Status"</option>
-                        <option value="Not Started">"Not Started"</option>
-                        <option value="In Progress">"In Progress"</option>
+                        <option value="Pending">"Pending"</option>
                         <option value="Completed">"Completed"</option>
-                        <option value="Blocked">"Blocked"</option>
                     </select>
                 </div>
 
@@ -231,7 +229,7 @@ pub fn HomePage() -> impl IntoView {
     let (new_due_date, set_new_due_date) = signal(String::new());
     let (new_due_time, set_new_due_time) = signal(String::new());
     let (new_assignee, set_new_assignee) = signal("Mikko".to_string());
-    let (new_status, set_new_status) = signal("Not Started".to_string());
+    let (new_status, set_new_status) = signal("Pending".to_string());
 
     // Sorting and filtering state
     let (sort_by, set_sort_by) = signal(SortBy::CreatedDate);
@@ -247,7 +245,7 @@ pub fn HomePage() -> impl IntoView {
         set_new_due_date.set(String::new());
         set_new_due_time.set(String::new());
         set_new_assignee.set("Mikko".to_string());
-        set_new_status.set("Not Started".to_string());
+        set_new_status.set("Pending".to_string());
         set_editing_todo.set(None);
     };
 
@@ -584,7 +582,7 @@ pub fn HomePage() -> impl IntoView {
                 .unwrap_or(TodoAssignee::Mikko),
             status: TodoStatus::from_str(&new_status.get_untracked())
                 .map_err(|e| leptos::logging::warn!("Invalid status: {:#?}", e))
-                .unwrap_or(TodoStatus::NotStarted),
+                .unwrap_or(TodoStatus::Pending),
         };
 
         set_error_message.set(String::new());
@@ -933,7 +931,7 @@ pub fn HomePage() -> impl IntoView {
                                                                             let todo_clone = todo.clone();
                                                                             let todo_id = todo.id;
                                                                             let status_color = match todo.status {
-                                                                                TodoStatus::NotStarted => "bg-gray-100 text-gray-800",
+                                                                                TodoStatus::Pending => "bg-gray-100 text-gray-800",
                                                                                 TodoStatus::Completed => "bg-green-100 text-green-800",
                                                                             };
                                                                             let assignee_color = match todo.assignee {
@@ -1161,10 +1159,8 @@ pub fn HomePage() -> impl IntoView {
                                         }
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                     >
-                                        <option value="Not Started">"Not Started"</option>
-                                        <option value="In Progress">"In Progress"</option>
+                                        <option value="Pending">"Pending"</option>
                                         <option value="Completed">"Completed"</option>
-                                        <option value="Blocked">"Blocked"</option>
                                     </select>
                                 </div>
 

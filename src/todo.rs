@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 // Enhanced Todo struct with additional fields
 #[derive(Clone, Debug, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum TodoStatus {
-    NotStarted,
+    Pending,
     Completed,
 }
 
@@ -14,14 +14,14 @@ impl TodoStatus {
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
-            TodoStatus::NotStarted => "Not Started",
+            TodoStatus::Pending => "Pending",
             TodoStatus::Completed => "Completed",
         }
     }
     #[must_use]
     pub fn bg_color(self) -> &'static str {
         match self {
-            TodoStatus::NotStarted => "bg-gray-100 text-gray-800",
+            TodoStatus::Pending => "bg-gray-100 text-gray-800",
             TodoStatus::Completed => "bg-green-100 text-green-800",
         }
     }
@@ -33,7 +33,7 @@ impl FromStr for TodoStatus {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Completed" => Ok(TodoStatus::Completed),
-            _ => Ok(TodoStatus::NotStarted),
+            _ => Ok(TodoStatus::Pending),
         }
     }
 }
