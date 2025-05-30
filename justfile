@@ -4,9 +4,10 @@ default:
 
 # Format code using rustfmt
 format:
-    @echo "Formatting Rust code with rustfmt..."
-    cargo fmt
-    leptosfmt -q ./**/*.rs 
+    @echo "Formatting all code..."
+    cargo fmt --all
+    leptosfmt -q src/**/*.rs
+    @echo "Done formatting!"
 
 # Run clippy to lint the code
 lint:
