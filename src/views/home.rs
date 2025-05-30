@@ -447,6 +447,42 @@ pub fn HomePage() -> impl IntoView {
         async move { delete_todo_server(id).await }
     });
 
+    let is_overdue = |due_timestamp: i64| -> bool {
+        if let Some(datetime) = chrono::DateTime::from_timestamp(due_timestamp, 0) {
+            let due_date = datetime.with_timezone(&chrono::Local);
+            let now = chrono::Local::now();
+            due_date < now
+        } else {
+            false
+        }
+    };
+
+    let is_past_date = move || {
+        let date_str = new_due_date.get();
+        let time_str = new_due_time.get();
+
+        if date_str.is_empty() {
+            return false;
+        }
+
+        let time_str = if time_str.is_empty() {
+            "00:00"
+        } else {
+            &time_str
+        };
+        let datetime_str = format!("{date_str} {time_str}");
+
+        if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%d %H:%M") {
+            if let Some(local_dt) = chrono::Local.from_local_datetime(&dt).single() {
+                local_dt < chrono::Local::now()
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    };
+
     // Load todos on component mount
     Effect::new(move |_| {
         load_todos_action.dispatch(());
@@ -548,7 +584,38 @@ pub fn HomePage() -> impl IntoView {
 
             if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%d %H:%M") {
                 if let Some(local_dt) = chrono::Local.from_local_datetime(&dt).single() {
-                    Some(local_dt.timestamp())
+                    let timestamp = local_dt.timestamp();
+
+                    // Check if the due date is in the past and show warning
+                    let now = chrono::Local::now();
+                    if local_dt < now {
+                        // Only show warning for new todos, not when editing existing ones
+                        if editing_todo.get_untracked().is_none() {
+                            let time_diff = now.signed_duration_since(local_dt);
+                            let warning_msg = if time_diff.num_days() > 0 {
+                                format!(
+                                    "Warning: You're creating a todo with a due date {} day(s) in the past. Are you sure you want to continue?",
+                                    time_diff.num_days()
+                                )
+                            } else if time_diff.num_hours() > 0 {
+                                format!(
+                                    "Warning: You're creating a todo with a due date {} hour(s) in the past. Are you sure you want to continue?",
+                                    time_diff.num_hours()
+                                )
+                            } else {
+                                "Warning: You're creating a todo with a due date in the past. Are you sure you want to continue?".to_string()
+                            };
+
+                            // Show confirmation dialog
+                            if let Some(window) = web_sys::window() {
+                                if !window.confirm_with_message(&warning_msg).unwrap_or(false) {
+                                    return; // User cancelled, don't create the todo
+                                }
+                            }
+                        }
+                    }
+
+                    Some(timestamp)
                 } else {
                     set_error_message.set("Invalid local datetime".to_string());
                     return;
@@ -938,13 +1005,53 @@ pub fn HomePage() -> impl IntoView {
                                                                                 TodoAssignee::Mikko => "bg-purple-100 text-purple-800",
                                                                                 TodoAssignee::Niina => "bg-pink-100 text-pink-800",
                                                                             };
+                                                                            let is_todo_overdue = todo
+                                                                                .due_date
+                                                                                .is_some_and(|timestamp| {
+                                                                                    is_overdue(timestamp) && todo.status == TodoStatus::Pending
+                                                                                });
+                                                                            let card_classes = if is_todo_overdue {
+                                                                                "bg-red-50 border-red-200 rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow duration-200"
+                                                                            } else {
+                                                                                "bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200"
+                                                                            };
+
+                                                                            // Check if todo is overdue and not completed
+
+                                                                            // Apply overdue styling
 
                                                                             view! {
-                                                                                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
+                                                                                <div class=card_classes>
                                                                                     <div class="flex justify-between items-start mb-3">
-                                                                                        <h4 class="text-lg font-semibold text-gray-900">
-                                                                                            {todo.title.clone()}
-                                                                                        </h4>
+                                                                                        <div class="flex items-start gap-2">
+                                                                                            // Add overdue indicator icon
+                                                                                            {if is_todo_overdue {
+                                                                                                view! {
+                                                                                                    <svg
+                                                                                                        class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
+                                                                                                        fill="currentColor"
+                                                                                                        viewBox="0 0 20 20"
+                                                                                                    >
+                                                                                                        <path
+                                                                                                            fill-rule="evenodd"
+                                                                                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                                                                            clip-rule="evenodd"
+                                                                                                        />
+                                                                                                    </svg>
+                                                                                                }
+                                                                                                    .into_any()
+                                                                                            } else {
+                                                                                                view! { <div></div> }.into_any()
+                                                                                            }}
+                                                                                            <h4 class=format!(
+                                                                                                "text-lg font-semibold {}",
+                                                                                                if is_todo_overdue {
+                                                                                                    "text-red-900"
+                                                                                                } else {
+                                                                                                    "text-gray-900"
+                                                                                                },
+                                                                                            )>{todo.title.clone()}</h4>
+                                                                                        </div>
                                                                                         <div class="flex items-center gap-2">
                                                                                             <span class=format!(
                                                                                                 "px-2 py-1 text-xs font-medium rounded-full {status_color}",
@@ -1012,7 +1119,16 @@ pub fn HomePage() -> impl IntoView {
                                                                                         .description
                                                                                         .as_ref()
                                                                                         .map(|desc| {
-                                                                                            view! { <p class="text-gray-600 mb-3">{desc.clone()}</p> }
+                                                                                            view! {
+                                                                                                <p class=format!(
+                                                                                                    "mb-3 {}",
+                                                                                                    if is_todo_overdue {
+                                                                                                        "text-red-700"
+                                                                                                    } else {
+                                                                                                        "text-gray-600"
+                                                                                                    },
+                                                                                                )>{desc.clone()}</p>
+                                                                                            }
                                                                                         })}
 
                                                                                     <div class="flex flex-wrap gap-2 items-center">
@@ -1023,9 +1139,23 @@ pub fn HomePage() -> impl IntoView {
                                                                                         {todo
                                                                                             .due_date
                                                                                             .map(|timestamp| {
+                                                                                                let due_date_class = if is_overdue(timestamp)
+                                                                                                    && todo.status == TodoStatus::Pending
+                                                                                                {
+                                                                                                    "px-2 py-1 text-xs font-medium rounded-full bg-red-200 text-red-900 font-bold"
+                                                                                                } else {
+                                                                                                    "px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800"
+                                                                                                };
+
                                                                                                 view! {
-                                                                                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                                                                                                        {format!("Due: {}", format_due_date(timestamp))}
+                                                                                                    <span class=due_date_class>
+                                                                                                        {if is_overdue(timestamp)
+                                                                                                            && todo.status == TodoStatus::Pending
+                                                                                                        {
+                                                                                                            format!("OVERDUE: {}", format_due_date(timestamp))
+                                                                                                        } else {
+                                                                                                            format!("Due: {}", format_due_date(timestamp))
+                                                                                                        }}
                                                                                                     </span>
                                                                                                 }
                                                                                             })}
@@ -1114,7 +1244,13 @@ pub fn HomePage() -> impl IntoView {
                                             on:input=move |ev| {
                                                 set_new_due_date.set(event_target_value(&ev));
                                             }
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            class=move || {
+                                                if is_past_date() {
+                                                    "w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-orange-50"
+                                                } else {
+                                                    "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                }
+                                            }
                                         />
                                     </div>
                                     <div>
@@ -1127,10 +1263,36 @@ pub fn HomePage() -> impl IntoView {
                                             on:input=move |ev| {
                                                 set_new_due_time.set(event_target_value(&ev));
                                             }
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            class=move || {
+                                                if is_past_date() {
+                                                    "w-full px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-orange-50"
+                                                } else {
+                                                    "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                }
+                                            }
                                         />
                                     </div>
                                 </div>
+                                <Show when=move || is_past_date() && editing_todo.get().is_none()>
+                                    <div class="mb-4 p-2 rounded-lg bg-orange-50 border border-orange-200">
+                                        <div class="flex items-center gap-2">
+                                            <svg
+                                                class="w-4 h-4 text-orange-500 flex-shrink-0"
+                                                fill="currentColor"
+                                                viewBox="0 0 20 20"
+                                            >
+                                                <path
+                                                    fill-rule="evenodd"
+                                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                    clip-rule="evenodd"
+                                                />
+                                            </svg>
+                                            <p class="text-sm text-orange-700">
+                                                "This date/time is in the past. You'll be asked to confirm when creating the todo."
+                                            </p>
+                                        </div>
+                                    </div>
+                                </Show>
 
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-gray-700 mb-2">
