@@ -2,12 +2,53 @@ use leptos::leptos_dom::logging;
 use miette::{Diagnostic, SourceSpan};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     env,
     fmt::{self, Formatter},
-    str::FromStr,
 };
 use thiserror::Error;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailConfig {
+    pub mikko: String,
+    pub niina: String,
+}
+
+impl EmailConfig {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.mikko.is_empty() && self.niina.is_empty()
+    }
+
+    #[must_use]
+    pub fn get(&self, assignee: &TodoAssignee) -> Option<String> {
+        let config = get_config().ok()?;
+        match assignee {
+            TodoAssignee::Mikko => Some(config.emails.mikko.clone()),
+            TodoAssignee::Niina => Some(config.emails.niina.clone()),
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (TodoAssignee, String)> {
+        vec![
+            (TodoAssignee::Mikko, self.mikko.clone()),
+            (TodoAssignee::Niina, self.niina.clone()),
+        ]
+        .into_iter()
+    }
+}
+
+impl IntoIterator for &EmailConfig {
+    type Item = (TodoAssignee, String);
+    type IntoIter = std::vec::IntoIter<(TodoAssignee, String)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        vec![
+            (TodoAssignee::Mikko, self.mikko.clone()),
+            (TodoAssignee::Niina, self.niina.clone()),
+        ]
+        .into_iter()
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -24,8 +65,8 @@ pub struct AppConfig {
     pub logging: LoggingConfig,
 
     // Email Configuration
-    pub emails: HashMap<TodoAssignee, String>, // Uncomment if email config is needed
-                                               // Add more configuration sections as needed
+    pub emails: EmailConfig, // Uncomment if email config is needed
+                             // Add more configuration sections as needed
 }
 
 #[cfg(feature = "ssr")]
@@ -387,24 +428,10 @@ impl AppConfig {
         };
 
         // email is specified in env varialbles as EMAIL_<assignee>=<email>
-        let emails = env_vars
-            .iter()
-            .filter_map(|(key, value)| {
-                if let Some(assignee_str) = key.strip_prefix("EMAIL_") {
-                    if let Ok(assignee) = TodoAssignee::from_str(assignee_str) {
-                        println!("Found email for assignee: {assignee_str} = {value}");
-                        Some((assignee, value.clone()))
-                    } else {
-                        logging::console_log(&format!(
-                            "Warning: Invalid email assignee '{assignee_str}', skipping"
-                        ));
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let emails = EmailConfig {
+            mikko: Self::get_required_env_var("EMAIL_MIKKO")?,
+            niina: Self::get_required_env_var("EMAIL_NIINA")?,
+        };
 
         Ok(AppConfig {
             cosmos,

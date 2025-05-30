@@ -158,14 +158,27 @@ pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
                                 disabled=move || is_loading.get()
                                 class="w-full flex justify-center py-3 px-4 border-0 rounded-xl shadow-md text-sm font-medium text-white bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-700 hover:via-fuchsia-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-500 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                             >
-                                <Show
-                                    when=move || is_loading.get()
-                                    fallback=|| view! { "Sign In" }
-                                >
+                                <Show when=move || is_loading.get() fallback=|| view! { "Sign In" }>
                                     <div class="flex items-center space-x-2">
-                                        <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="m12 2a10 10 0 0 0-10 10h4a6 6 0 0 1 6-6v-4z"></path>
+                                        <svg
+                                            class="animate-spin h-4 w-4 text-white"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <circle
+                                                class="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                stroke-width="4"
+                                            ></circle>
+                                            <path
+                                                class="opacity-75"
+                                                fill="currentColor"
+                                                d="m12 2a10 10 0 0 0-10 10h4a6 6 0 0 1 6-6v-4z"
+                                            ></path>
                                         </svg>
                                         <span>"Signing In..."</span>
                                     </div>
