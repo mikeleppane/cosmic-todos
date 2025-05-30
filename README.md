@@ -63,6 +63,18 @@ Cosmic Todos is a sleek, modern web application designed for family task managem
 - Screen reader friendly
 - Touch-friendly interface
 
+
+## 📸 Screenshots
+
+<div align="center">
+
+![Cosmic Todos App Screenshot](images/app-screenshot.png)
+
+*Cosmic Todos in action*
+
+</div>
+
+
 ## 🏗️ Architecture
 
 Cosmic Todos follows a modern full-stack architecture leveraging Rust's ecosystem for both frontend and backend components, with Azure cloud services providing scalable infrastructure.
