@@ -12,7 +12,7 @@ CHANGELOG.md
 docs/
 
 # Development files
-.env*
+# .env*
 .vscode/
 .idea/
 *.swp
@@ -132,7 +132,7 @@ criterion/
 
 # Local configuration
 config.local.*
-.env.local
+# .env.local
 
 # Scripts (unless needed for container)
 scripts/
@@ -171,69 +171,66 @@ demo/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
-**__pycache__/
-*.py[cod]
-*$py.class
+functions/**/__pycache__/
+functions/**/*.py[cod]
+functions/**/*$py.class
 
 # C extensions
-*.so
+functions/**/*.so
 
 # Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+functions/**/.Python
+functions/**/build/
+functions/**/develop-eggs/
+functions/**/dist/
+functions/**/downloads/
+functions/**/eggs/
+functions/**/.eggs/
+functions/**/lib/
+functions/**/lib64/
+functions/**/parts/
+functions/**/sdist/
+functions/**/var/
+functions/**/wheels/
+functions/**/share/python-wheels/
+functions/**/*.egg-info/
+functions/**/.installed.cfg
+functions/**/*.egg
+functions/**/MANIFEST
 
 
 # Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
+functions/**/htmlcov/
+functions/**/.tox/
+functions/**/.nox/
+functions/**/.coverage
+functions/**/.coverage.*
+functions/**/.cache
+functions/**/nosetests.xml
+functions/**/coverage.xml
+functions/**/*.cover
+functions/**/*.py,cover
+functions/**/.hypothesis/
+functions/**/.pytest_cache/
+functions/**/cover/
 
 # Environments
-.env
-**.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-
-# mkdocs documentation
-/site
+# .env
+.venv
+functions/**/.venv
+functions/**/env/
+functions/**/venv/
+functions/**/ENV/
+functions/**/env.bak/
+functions/**/venv.bak/
 
 # mypy
+functions/**/.mypy_cache/
+functions/**/.dmypy.json
+functions/**/dmypy.json
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
 # ruff
+functions/**/.ruff_cache/
 .ruff_cache/
-
-Dockerfile
-

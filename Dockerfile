@@ -44,10 +44,12 @@ RUN apt-get update -y \
 COPY --from=builder /app/target/release/cosmic-rust /app/
 
 # /target/site contains our JS/WASM/CSS, etc.
-COPY --from=builder /app/target/site /app/site
+COPY --from=builder /app/site /app/site
 
 # Copy Cargo.toml if it’s needed at runtime
 COPY --from=builder /app/Cargo.toml /app/
+
+COPY --from=builder /app/.env /app/
 
 # Set any required env variables and
 ENV RUST_LOG="info"
