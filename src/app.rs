@@ -63,7 +63,7 @@ pub fn App() -> impl IntoView {
                     <Route
                         path=StaticSegment("")
                         view=move || {
-                            if authenticated.get() {
+                            if *authenticated.read() {
                                 view! { <HomePage /> }.into_any()
                             } else {
                                 view! { <LoginPage set_authenticated /> }.into_any()

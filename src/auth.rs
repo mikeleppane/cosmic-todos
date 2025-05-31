@@ -169,7 +169,9 @@ pub async fn authenticate_user(credentials: LoginRequest) -> Result<LoginRespons
 
         // Store session in memory (use Azure Cache/Redis in production)
         {
-            let mut sessions = SESSION_STORE.lock().unwrap();
+            let mut sessions = SESSION_STORE
+                .lock()
+                .expect("Failed to acquire session store lock");
             sessions.insert(session_token.clone(), session_info);
         }
 
@@ -212,7 +214,9 @@ pub async fn authenticate_user(credentials: LoginRequest) -> Result<LoginRespons
 
 #[server(ValidateSession, "/api")]
 pub async fn validate_session(session_token: String) -> Result<AuthStatus, ServerFnError> {
-    let sessions = SESSION_STORE.lock().unwrap();
+    let sessions = SESSION_STORE
+        .lock()
+        .expect("Failed to acquire session store lock");
 
     if let Some(session_info) = sessions.get(&session_token) {
         // Check if session is still valid
@@ -250,7 +254,9 @@ pub async fn validate_session(session_token: String) -> Result<AuthStatus, Serve
 
 #[server(LogoutUser, "/api")]
 pub async fn logout_user(session_token: String) -> Result<bool, ServerFnError> {
-    let mut sessions = SESSION_STORE.lock().unwrap();
+    let mut sessions = SESSION_STORE
+        .lock()
+        .expect("Failed to acquire session store lock");
 
     if let Some(session_info) = sessions.get_mut(&session_token) {
         session_info.is_active = false;
@@ -270,7 +276,9 @@ pub async fn refresh_session(session_token: String) -> Result<String, ServerFnEr
         .await
         .map_err(|e| ServerFnError::new(format!("Failed to extract app config: {}", e)))?;
 
-    let mut sessions = SESSION_STORE.lock().unwrap();
+    let mut sessions = SESSION_STORE
+        .lock()
+        .expect("Failed to acquire session store lock");
 
     if let Some(session_info) = sessions.get_mut(&session_token) {
         if session_info.is_active && Utc::now() < session_info.expires_at {

@@ -22,6 +22,15 @@ pub struct CosmosDbTodo {
     pub updated_at: i64,
     pub partition_key: String,
     pub email: String,
+    // Optional notification tracking fields for Azure Functions
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reminder_24h_sent: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub final_reminder_sent: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_notification_time: Option<i64>,
 }
 
 impl CosmosDbTodo {
@@ -50,6 +59,9 @@ impl CosmosDbTodo {
             updated_at: now,
             partition_key: "family_todos".to_string(),
             email: email.clone(),
+            reminder_24h_sent: None,
+            final_reminder_sent: None,
+            last_notification_time: None,
         })
     }
 }
