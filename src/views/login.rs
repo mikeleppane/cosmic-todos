@@ -5,6 +5,8 @@ use leptos_router::{NavigateOptions, hooks::use_navigate};
 #[cfg(feature = "hydrate")]
 use crate::auth::store_session_token;
 
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[component]
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::must_use_candidate)]
@@ -190,7 +192,9 @@ pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
 
                 <div class="mt-4 text-center">
                     <p class="text-xs font-medium bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">
-                        "© 2025 Family Leppänen · All rights reserved"
+                        {format!(
+                            "© 2025 Family Leppänen · v{APP_VERSION} · All rights reserved",
+                        )}
                     </p>
                 </div>
             </div>
