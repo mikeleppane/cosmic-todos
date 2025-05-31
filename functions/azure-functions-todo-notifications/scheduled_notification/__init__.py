@@ -1,6 +1,5 @@
 import logging
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import azure.functions as func
 from shared.email_service import send_email
