@@ -1,26 +1,33 @@
 import os
 
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+import requests
 
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY")
+EMAIL_SEND_API_KEY = os.environ.get("EMAIL_SEND_API_KEY")
+
+FROM_EMAIL = "family.leppanen.todos@familyleppanen.net"
 
 
 def send_email(to_email, subject, content):
-    message = Mail(
-        from_email="familyleppanen02@gmail.com",  # Replace with your verified SendGrid sender email
-        to_emails=to_email,
-        subject=subject,
-        plain_text_content=content,
+    res = requests.post(
+        "https://api.eu.mailgun.net/v3/familyleppanen.net/messages",
+        auth=("api", EMAIL_SEND_API_KEY),
+        data={
+            "from": "family.leppanen.todos@familyleppanen.net",
+            "to": to_email,
+            "subject": subject,
+            "text": content,
+        },
     )
-
-    try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        return response.status_code
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        return None
+    if res.status_code == 200:
+        return {
+            "status": "success",
+            "message": f"Email sent to {to_email} with subject '{subject}'",
+        }
+    else:
+        return {
+            "status": "error",
+            "message": f"Failed to send email to {to_email}. Status code: {res.status_code}, Response: {res.text}",
+        }
 
 
 def notify_assignee(assignee_email, todo_item):

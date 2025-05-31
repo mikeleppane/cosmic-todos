@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 import azure.functions as func
 from shared.email_service import send_email
-from shared.todo_service import get_assignee_email, get_todo_items
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
@@ -31,28 +30,34 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Assignee is required.", status_code=400)
 
     # Get the assignee's email
-    assignee_email = get_assignee_email(assignee)
+    assignee_email = todo_item.get("email", "mleppan23@gmail.com")
+    assignee_name = todo_item.get("assignee", "Mikko")
 
     # Notify immediately on creation or update
     if todo_item.get("is_new"):
         content = (
+            f"Hello {assignee_name},\n\n"
             f"A new todo item has been created: {todo_item.get('title')}."
             f" Description: {todo_item.get('description', 'No description provided')}."
             f" Due date: {todo_item.get('due_date', 'No due date set')}."
             f" Assignee: {assignee}."
+            "\n\nPlease check your todo list for more details.\n\n"
         )
+
         send_email(
             assignee_email,
-            "Todo Item Notification",
-            f"You have a new todo item: {todo_item.get('title')}.",
+            "New Todo Item Created",
+            content,
         )
 
     if todo_item.get("is_updated"):
         content = (
+            f"Hello {assignee_name},\n\n"
             f"Your todo item has been updated: {todo_item.get('title')}."
             f" Description: {todo_item.get('description', 'No description provided')}."
             f" Due date: {todo_item.get('due_date', 'No due date set')}."
             f" Assignee: {assignee}."
+            "\n\nPlease check your todo list for more details.\n\n"
         )
         send_email(
             assignee_email,
@@ -71,16 +76,16 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         ).date() == today.date() and status != "Completed":
             send_email(
                 assignee_email,
-                "Todo Reminder",
-                f"Reminder: Your todo item '{todo_item.get('title')}' is due tomorrow.",
+                f"Todo Due Tomorrow Reminder",
+                f"Hello {assignee_name},\n\nYour todo item '{todo_item.get('title')}' is due tomorrow. Please complete it soon.\n\n",
             )
 
         # Send reminder if overdue and status is NotStarted
         if today.date() > due_date_obj.date() and status == "NotStarted":
             send_email(
                 assignee_email,
-                "Overdue Todo Reminder",
-                f"Your todo item '{todo_item.get('title')}' is overdue.",
+                "Todo Overdue Reminder",
+                f"Hello {assignee_name},\n\nYour todo item '{todo_item.get('title')}' is overdue. Please take action. ",
             )
 
     return func.HttpResponse("Notification processed.", status_code=200)
