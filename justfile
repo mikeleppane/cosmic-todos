@@ -6,14 +6,14 @@ default:
 format:
     @echo "Formatting all code..."
     cargo fmt --all
-    leptosfmt -q src/**/*.rs
+    find src -name "*.rs" -exec leptosfmt -q {} \;
     @echo "Done formatting!"
 
 # Run clippy to lint the code
 lint:
     @echo "Linting with clippy..."
     cargo fmt -- --check
-    leptosfmt --check ./**/*.rs
+    find . -name "*.rs" -exec leptosfmt -q --check {} \;
     cargo clippy
 
 # Fix linting issues where possible
