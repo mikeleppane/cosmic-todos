@@ -41,10 +41,10 @@ class TodoService:
 
             # Set created_at if it's a new item (doesn't exist)
             if not todo.get("created_at"):
-                todo["created_at"] = current_time.timestamp()
+                todo["created_at"] = int(current_time.timestamp())
 
             # Always update the modified_at timestamp
-            todo["updated_at"] = current_time.timestamp()
+            todo["updated_at"] = int(current_time.timestamp())
 
             # Upsert the item in Cosmos DB
             result = self.container.upsert_item(body=todo)
