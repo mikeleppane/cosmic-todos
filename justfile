@@ -12,8 +12,8 @@ format:
 # Run clippy to lint the code
 lint:
     @echo "Linting with clippy..."
-    leptosfmt -q --check ./**/*.rs
     cargo fmt -- --check
+    leptosfmt --check ./**/*.rs
     cargo clippy
 
 # Fix linting issues where possible
