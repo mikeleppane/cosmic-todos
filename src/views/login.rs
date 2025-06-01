@@ -1,6 +1,7 @@
 use crate::auth::{LoginRequest, authenticate_user};
 use leptos::{ev, prelude::*, task::spawn_local};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
+use validator::Validate;
 
 #[cfg(feature = "hydrate")]
 use crate::auth::store_session_token;
@@ -25,6 +26,18 @@ pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
             username: username.get(),
             password: password.get(),
         };
+
+        match credentials.validate() {
+            Ok(()) => {
+                leptos::logging::log!("Attempting to authenticate user: {}", credentials.username);
+            }
+            Err(e) => {
+                set_error.set(format!("Invalid username or password: {e}"));
+                set_is_loading.set(false);
+                leptos::logging::error!("Validation error: {e}");
+                return;
+            }
+        }
 
         spawn_local(async move {
             match authenticate_user(credentials).await {

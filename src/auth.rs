@@ -6,7 +6,7 @@ use leptos::web_sys;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
-
+use validator::{Validate, ValidationError};
 //#[cfg(feature = "hydrate")]
 
 #[derive(Clone)]
@@ -92,10 +92,30 @@ pub fn use_auth() -> AuthContext {
     expect_context::<AuthContext>()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct LoginRequest {
+    #[validate(length(min = 3, max = 32))]
     pub username: String,
+    #[validate(length(min = 8, max = 128, message = "Password must be 8-128 characters"))]
+    #[validate(custom(function = "validate_password_strength"))]
     pub password: String,
+}
+
+fn validate_password_strength(password: &str) -> Result<(), ValidationError> {
+    let has_upper = password.chars().any(char::is_uppercase);
+    let has_lower = password.chars().any(char::is_lowercase);
+    let has_digit = password.chars().any(char::is_numeric);
+    let has_special = password
+        .chars()
+        .any(|c| "!@#$%^&*()_+-=[]{}|;:,.<>?".contains(c));
+
+    if !(has_upper && has_lower && has_digit && has_special) {
+        return Err(ValidationError::new(
+            "Password must contain uppercase, lowercase, digit, and special character",
+        ));
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

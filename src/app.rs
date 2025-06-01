@@ -105,16 +105,29 @@ fn Redirect(path: &'static str) -> impl IntoView {
 pub async fn create_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
     use crate::services::cosmos_service::get_cosmos_service;
     use leptos::logging;
+    use validator::Validate;
+
+    // Validate input
+    todo.validate()
+        .map_err(|e| ServerFnError::new(format!("Validation error: {}", e)))?;
+
+    // Sanitize strings
+    #[allow(unused_variables)]
+    let sanitized_todo = Todo {
+        title: sanitize_string(&todo.title),
+        description: todo.description.map(|desc| sanitize_string(&desc)),
+        ..todo
+    };
 
     // Initialize DB on first access
     logging::log!("Initializing Cosmos DB...");
     let cosmos_service = get_cosmos_service()
         .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {e}")))?;
 
-    logging::log!("Creating todo in Cosmos DB: {:?}", todo);
+    logging::log!("Creating todo in Cosmos DB: {:?}", sanitized_todo);
 
     let cosmos_todo = cosmos_service
-        .create_todo(todo)
+        .create_todo(sanitized_todo)
         .await
         .map_err(|e| ServerFnError::new(format!("Failed to create todo: {e}")))?;
 
@@ -179,4 +192,17 @@ pub async fn delete_todo_server(todo_id: String) -> Result<(), ServerFnError> {
     logging::log!("Deleted todo from Cosmos DB: {todo_id}");
 
     Ok(())
+}
+
+#[allow(dead_code)]
+fn sanitize_string(input: &str) -> String {
+    // Remove potential HTML/script tags and normalize whitespace
+    input
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+        .trim()
+        .to_string()
 }

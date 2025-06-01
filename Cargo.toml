@@ -33,6 +33,9 @@ web-sys = { version = "0.3.77", features = [
     "Storage",
 ], optional = true }
 futures = "0.3.31"
+jsonwebtoken = "9.3.1"
+validator = { version = "0.20.0", features = ["derive"] }
+regex = "1.11.1"
 
 [features]
 hydrate = [

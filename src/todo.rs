@@ -1,8 +1,8 @@
-use std::fmt::Display;
-use std::str::FromStr;
-
 use chrono::{DateTime, Local, TimeZone};
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
+use std::str::FromStr;
+use validator::Validate;
 // Enhanced Todo struct with additional fields
 #[derive(Clone, Debug, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum TodoStatus {
@@ -70,14 +70,25 @@ impl FromStr for TodoAssignee {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, Validate)]
 pub struct Todo {
     pub id: String,
+    #[validate(length(min = 1, max = 500, message = "Title must be 1-500 characters"))]
+    #[validate(custom(function = "validate_no_html"))]
     pub title: String,
+    #[validate(length(max = 2000, message = "Description too long"))]
+    #[validate(custom(function = "validate_no_html"))]
     pub description: Option<String>,
     pub due_date: Option<i64>, // Unix timestamp in seconds
     pub assignee: TodoAssignee,
     pub status: TodoStatus,
+}
+
+fn validate_no_html(input: &str) -> Result<(), validator::ValidationError> {
+    if input.contains('<') || input.contains('>') || input.contains('&') {
+        return Err(validator::ValidationError::new("HTML tags not allowed"));
+    }
+    Ok(())
 }
 
 impl Todo {

@@ -7,6 +7,7 @@ use leptos::leptos_dom::logging;
 use leptos::web_sys;
 use leptos::{ev, prelude::*};
 use uuid::Uuid;
+use validator::Validate;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SortBy {
@@ -651,6 +652,14 @@ pub fn HomePage() -> impl IntoView {
                 .map_err(|e| leptos::logging::warn!("Invalid status: {:#?}", e))
                 .unwrap_or(TodoStatus::Pending),
         };
+
+        match todo.validate() {
+            Ok(()) => {}
+            Err(e) => {
+                set_error_message.set(format!("Invalid todo data: Error validating todo: {e}"));
+                return;
+            }
+        }
 
         set_error_message.set(String::new());
 
