@@ -1,14 +1,13 @@
+use crate::{
+    config::get_config,
+    todo::{Todo, TodoAssignee, TodoStatus},
+};
 use azure_core::{credentials::Secret, error::Error as AzureError};
 use azure_data_cosmos::{CosmosClient, PartitionKey};
 use futures::stream::TryStreamExt;
 use leptos::leptos_dom::logging;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-
-use crate::{
-    config::get_config,
-    todo::{Todo, TodoAssignee, TodoStatus},
-};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CosmosDbTodo {
@@ -23,14 +22,23 @@ pub struct CosmosDbTodo {
     pub partition_key: String,
     pub email: String,
     // Optional notification tracking fields for Azure Functions
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default = "default_false")]
     pub reminder_24h_sent: Option<bool>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default = "default_false")]
     pub final_reminder_sent: Option<bool>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default = "default_none")]
     pub last_notification_time: Option<i64>,
+}
+
+// Helper functions for default values
+fn default_false() -> Option<bool> {
+    None
+}
+
+fn default_none() -> Option<i64> {
+    None
 }
 
 impl CosmosDbTodo {
@@ -150,26 +158,56 @@ impl CosmosService {
         let database = self.client.database_client(&self.database_name);
         let container = database.container_client(&self.container_name);
 
-        let query = "SELECT * FROM c ORDER BY c.created_at DESC";
+        // Use a more explicit query approach
+        let query =
+            "SELECT * FROM c WHERE c.partition_key = 'family_todos' ORDER BY c.created_at DESC";
         let partition_key = PartitionKey::from("family_todos");
 
-        let query_result = container.query_items::<CosmosDbTodo>(query, partition_key, None);
+        logging::console_log("Starting Cosmos DB query for todos...");
 
         let mut todos = Vec::new();
 
+        // Create the query stream
+        let query_result = container.query_items::<CosmosDbTodo>(query, partition_key, None);
+
         match query_result {
             Ok(mut query_stream) => {
-                while let Ok(Some(feed_page)) = query_stream.try_next().await {
-                    for item in feed_page.items() {
-                        todos.push(item.clone());
+                logging::console_log("Query stream created successfully");
+
+                // Process the stream more carefully
+                loop {
+                    match query_stream.try_next().await {
+                        Ok(Some(feed_page)) => {
+                            logging::console_log(&format!(
+                                "Received feed page with {} items",
+                                feed_page.items().len()
+                            ));
+
+                            for item in feed_page.items() {
+                                logging::console_log(&format!("Processing item: {item:#?}"));
+                                todos.push(item.clone());
+                            }
+                        }
+                        Ok(None) => {
+                            logging::console_log("No more pages in query stream");
+                            break; // No more pages
+                        }
+                        Err(e) => {
+                            logging::console_error(&format!(
+                                "Error reading from query stream: {e}"
+                            ));
+                            return Err(e);
+                        }
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Error querying todos: {e}");
+                logging::console_error(&format!("Error creating query stream: {e}"));
                 return Err(e);
             }
         }
+
+        logging::console_log(&format!("Retrieved {} todos from Cosmos DB", todos.len()));
         Ok(todos)
     }
 
