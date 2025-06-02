@@ -29,7 +29,6 @@ yarn.lock
 
 # Rust target directory (will be built inside container)
 target/
-Cargo.lock
 
 # Leptos output (will be generated during build)
 pkg/
