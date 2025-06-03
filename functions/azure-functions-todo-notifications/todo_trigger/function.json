@@ -1,18 +1,16 @@
 {
     "bindings": [
         {
-            "type": "httpTrigger",
+            "type": "cosmosDBTrigger",
+            "name": "documents",
             "direction": "in",
-            "authLevel": "function",
-            "methods": [
-                "post"
-            ],
-            "route": "todo"
-        },
-        {
-            "type": "http",
-            "direction": "out"
+            "connection": "CosmosDBConnectionString",
+            "databaseName": "familyleppanen",
+            "containerName": "todos",
+            "createLeaseContainerIfNotExists": true,
+            "leaseContainerName": "leases"
         }
     ],
+    "scriptFile": "__init__.py",
     "disabled": false
 }

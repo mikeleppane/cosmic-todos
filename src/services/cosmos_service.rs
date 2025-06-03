@@ -217,17 +217,55 @@ impl CosmosService {
     ///
     /// Returns an `AzureError` if the update operation fails or if there's an issue
     /// connecting to the Cosmos DB service.
+    ///
     pub async fn update_todo(
         &self,
         updated_todo: Todo,
     ) -> Result<CosmosDbTodo, Box<dyn std::error::Error + Send + Sync>> {
-        let mut cosmos_todo = CosmosDbTodo::try_from_todo(updated_todo)?;
-        cosmos_todo.updated_at = chrono::Utc::now().timestamp();
-        let partition_key = PartitionKey::from("family_todos");
-
         let database = self.client.database_client(&self.database_name);
         let container = database.container_client(&self.container_name);
+        let partition_key = PartitionKey::from("family_todos");
 
+        // First, fetch the existing item using a query to preserve created_at and notification fields
+        let query = format!(
+            "SELECT * FROM c WHERE c.id = '{}' AND c.partition_key = 'family_todos'",
+            updated_todo.id
+        );
+
+        let query_result =
+            container.query_items::<CosmosDbTodo>(&query, partition_key.clone(), None);
+
+        let mut existing_todo: Option<CosmosDbTodo> = None;
+
+        match query_result {
+            Ok(mut query_stream) => {
+                if let Ok(Some(feed_page)) = query_stream.try_next().await {
+                    if let Some(item) = feed_page.items().first() {
+                        existing_todo = Some(item.clone());
+                    }
+                }
+            }
+            Err(e) => {
+                logging::console_error(&format!("Error querying existing todo: {e}"));
+                return Err(Box::new(e));
+            }
+        }
+
+        // Create the updated todo
+        let mut cosmos_todo = CosmosDbTodo::try_from_todo(updated_todo)?;
+
+        // If we found the existing todo, preserve the original timestamps and notification fields
+        if let Some(existing) = existing_todo {
+            cosmos_todo.created_at = existing.created_at; // Preserve original creation time
+            cosmos_todo.reminder_24h_sent = existing.reminder_24h_sent;
+            cosmos_todo.final_reminder_sent = existing.final_reminder_sent;
+            cosmos_todo.last_notification_time = existing.last_notification_time;
+        }
+
+        // Always update the modification time
+        cosmos_todo.updated_at = chrono::Utc::now().timestamp();
+
+        // Replace the item in Cosmos DB
         let response = container
             .replace_item(partition_key, &cosmos_todo.id, &cosmos_todo, None)
             .await
@@ -238,6 +276,8 @@ impl CosmosService {
             logging::console_error(&error_msg);
             return Err(Box::new(std::io::Error::other(error_msg)));
         }
+
+        logging::console_log(&format!("Updated todo in Cosmos DB: {}", cosmos_todo.id));
         Ok(cosmos_todo)
     }
 
