@@ -79,7 +79,7 @@ pub struct Todo {
     #[validate(length(max = 2000, message = "Description too long"))]
     #[validate(custom(function = "validate_no_html"))]
     pub description: Option<String>,
-    pub due_date: Option<i64>, // Unix timestamp in seconds
+    pub due_date: Option<u64>, // Unix timestamp in seconds
     pub assignee: TodoAssignee,
     pub status: TodoStatus,
 }
@@ -96,11 +96,15 @@ impl Todo {
     pub fn format_due_date(&self) -> String {
         match self.due_date {
             Some(timestamp) => {
-                if let Some(date) = DateTime::from_timestamp(timestamp, 0) {
-                    let local_date = Local.from_local_datetime(&date.naive_utc()).single();
-                    match local_date {
-                        Some(ld) => ld.format("%Y-%m-%d %H:%M").to_string(),
-                        None => "Invalid date".to_string(),
+                if let Ok(timestamp_i64) = i64::try_from(timestamp) {
+                    if let Some(date) = DateTime::from_timestamp(timestamp_i64, 0) {
+                        let local_date = Local.from_local_datetime(&date.naive_utc()).single();
+                        match local_date {
+                            Some(ld) => ld.format("%Y-%m-%d %H:%M").to_string(),
+                            None => "Invalid date".to_string(),
+                        }
+                    } else {
+                        "Invalid date".to_string()
                     }
                 } else {
                     "Invalid date".to_string()
@@ -118,7 +122,10 @@ impl Todo {
         match self.due_date {
             Some(deadline) => {
                 let now = chrono::Local::now().timestamp();
-                deadline < now
+                if now < 0 {
+                    return false; // If current time is before epoch, not overdue
+                }
+                deadline < now.unsigned_abs()
             }
             None => false,
         }

@@ -14,11 +14,11 @@ pub struct CosmosDbTodo {
     pub id: String,
     pub title: String,
     pub description: Option<String>,
-    pub due_date: Option<i64>,
+    pub due_date: Option<u64>,
     pub assignee: String,
     pub status: String,
-    pub created_at: i64,
-    pub updated_at: i64,
+    pub created_at: u64,
+    pub updated_at: u64,
     pub partition_key: String,
     pub email: String,
     // Optional notification tracking fields for Azure Functions
@@ -49,18 +49,24 @@ impl CosmosDbTodo {
     /// Returns an error if the app configuration cannot be retrieved or if the
     /// assignee email is not found in the configuration.
     pub fn try_from_todo(todo: Todo) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let now = chrono::Utc::now().timestamp();
+        let now = chrono::Utc::now()
+            .timestamp()
+            .max(0)
+            .try_into()
+            .unwrap_or(0);
         let config = get_config().map_err(|e| format!("Failed to get app config: {e}"))?;
         let email = config
             .emails
             .get(&todo.assignee)
             .ok_or("Assignee email not found")?;
 
+        let due_date = todo.due_date; // No conversion needed, already u64
+
         Ok(Self {
             id: todo.id,
             title: todo.title,
             description: todo.description,
-            due_date: todo.due_date,
+            due_date,
             assignee: todo.assignee.as_str().to_string(),
             status: todo.status.as_str().to_string(),
             created_at: now,
@@ -80,7 +86,7 @@ impl From<CosmosDbTodo> for Todo {
             id: cosmos_todo.id.parse().unwrap_or(String::new()), // Convert string ID back to usize for UI
             title: cosmos_todo.title,
             description: cosmos_todo.description,
-            due_date: cosmos_todo.due_date,
+            due_date: Some(cosmos_todo.due_date.unwrap_or(0)), // Convert u64 back to i64 for UI
             assignee: TodoAssignee::from_str(&cosmos_todo.assignee).unwrap_or(TodoAssignee::Mikko),
             status: TodoStatus::from_str(&cosmos_todo.status).unwrap_or(TodoStatus::Pending),
         }
@@ -263,7 +269,11 @@ impl CosmosService {
         }
 
         // Always update the modification time
-        cosmos_todo.updated_at = chrono::Utc::now().timestamp();
+        cosmos_todo.updated_at = chrono::Utc::now()
+            .timestamp()
+            .max(0)
+            .try_into()
+            .unwrap_or(0);
 
         // Replace the item in Cosmos DB
         let response = container

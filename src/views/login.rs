@@ -1,25 +1,25 @@
-use crate::auth::{LoginRequest, authenticate_user};
-use leptos::{ev, prelude::*, task::spawn_local};
+use crate::auth::{LoginRequest, use_auth};
+use leptos::{ev, prelude::*};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
 use validator::Validate;
-
-#[cfg(feature = "hydrate")]
-use crate::auth::store_session_token;
 
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[component]
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::must_use_candidate)]
-pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
+#[must_use]
+pub fn LoginPage() -> impl IntoView {
     let (username, set_username) = signal(String::new());
     let (password, set_password) = signal(String::new());
     let (error, set_error) = signal(String::new());
-    let (is_loading, set_is_loading) = signal(false);
+
+    // Use the auth context instead of manual state management
+    let auth = use_auth();
+    let navigate = use_navigate();
 
     let handle_login = move |ev: ev::SubmitEvent| {
         ev.prevent_default();
-        set_is_loading.set(true);
         set_error.set(String::new());
 
         let credentials = LoginRequest {
@@ -33,48 +33,35 @@ pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
             }
             Err(e) => {
                 set_error.set(format!("Invalid username or password: {e}"));
-                set_is_loading.set(false);
                 leptos::logging::error!("Validation error: {e}");
                 return;
             }
         }
 
-        spawn_local(async move {
-            match authenticate_user(credentials).await {
-                Ok(response) => {
-                    if response.success {
-                        // Store session token on client side
-                        #[allow(unused_variables)]
-                        if let Some(token) = response.session_token {
-                            #[cfg(feature = "hydrate")]
-                            {
-                                store_session_token(&token);
-                            }
-                        }
-
-                        set_authenticated.set(true);
-                        let navigate = use_navigate();
-                        navigate("/todo", NavigateOptions::default());
-
-                        leptos::logging::log!(
-                            "Login successful for user: {}",
-                            response
-                                .user_info
-                                .as_ref()
-                                .map_or(&"unknown".to_string(), |u| &u.username)
-                        );
-                    } else {
-                        set_error.set(response.message);
-                    }
-                }
-                Err(e) => {
-                    leptos::logging::error!("Login error: {}", e);
-                    set_error.set("Authentication failed. Please try again.".to_string());
-                }
-            }
-            set_is_loading.set(false);
-        });
+        // Use the auth context's login action
+        auth.login.dispatch(credentials);
     };
+
+    // Watch for login completion and navigate
+    Effect::new(move |_| {
+        // Check if login action completed successfully
+        if let Some(Ok(response)) = auth.login.value().get() {
+            if response.success {
+                leptos::logging::log!("Login successful, navigating to /todo");
+                // Clear the form
+                set_username.set(String::new());
+                set_password.set(String::new());
+                set_error.set(String::new());
+                // Navigate to todo page
+                navigate("/todo", NavigateOptions::default());
+            } else {
+                set_error.set(response.message);
+            }
+        } else if let Some(Err(e)) = auth.login.value().get() {
+            leptos::logging::error!("Login error: {}", e);
+            set_error.set("Authentication failed. Please try again.".to_string());
+        }
+    });
 
     view! {
         <main class="flex items-center justify-center min-h-screen bg-gradient-to-br from-fuchsia-100 via-sky-100 to-indigo-200">
@@ -121,7 +108,7 @@ pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
                                     id="username"
                                     type="text"
                                     required
-                                    disabled=move || is_loading.get()
+                                    disabled=move || auth.login.pending().get()
                                     class="block w-full px-4 py-3 bg-indigo-50/50 border-0 rounded-xl shadow-sm placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     prop:value=move || username.get()
                                     on:input=move |ev| set_username.set(event_target_value(&ev))
@@ -134,7 +121,7 @@ pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
                                     id="password"
                                     type="password"
                                     required
-                                    disabled=move || is_loading.get()
+                                    disabled=move || auth.login.pending().get()
                                     class="block w-full px-4 py-3 bg-indigo-50/50 border-0 rounded-xl shadow-sm placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     prop:value=move || password.get()
                                     on:input=move |ev| set_password.set(event_target_value(&ev))
@@ -142,6 +129,7 @@ pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
                                 />
                             </div>
 
+                            // Error display
                             <Show when=move || !error.get().is_empty() fallback=|| "">
                                 <div class="p-3 rounded-xl bg-red-50 border border-red-100 shadow-sm">
                                     <div class="flex items-center">
@@ -170,10 +158,13 @@ pub fn LoginPage(set_authenticated: WriteSignal<bool>) -> impl IntoView {
 
                             <button
                                 type="submit"
-                                disabled=move || is_loading.get()
+                                disabled=move || auth.login.pending().get()
                                 class="w-full flex justify-center py-3 px-4 border-0 rounded-xl shadow-md text-sm font-medium text-white bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-700 hover:via-fuchsia-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fuchsia-500 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                             >
-                                <Show when=move || is_loading.get() fallback=|| view! { "Sign In" }>
+                                <Show
+                                    when=move || auth.login.pending().get()
+                                    fallback=|| view! { "Sign In" }
+                                >
                                     <div class="flex items-center space-x-2">
                                         <svg
                                             class="animate-spin h-4 w-4 text-white"

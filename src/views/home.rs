@@ -258,10 +258,12 @@ pub fn HomePage() -> impl IntoView {
         set_new_status.set(todo.status.as_str().to_string());
 
         if let Some(timestamp) = todo.due_date {
-            if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp, 0) {
-                let local_datetime = datetime.with_timezone(&chrono::Local);
-                set_new_due_date.set(local_datetime.format("%Y-%m-%d").to_string());
-                set_new_due_time.set(local_datetime.format("%H:%M").to_string());
+            if let Ok(timestamp_i64) = i64::try_from(timestamp) {
+                if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp_i64, 0) {
+                    let local_datetime = datetime.with_timezone(&chrono::Local);
+                    set_new_due_date.set(local_datetime.format("%Y-%m-%d").to_string());
+                    set_new_due_time.set(local_datetime.format("%H:%M").to_string());
+                }
             }
         } else {
             set_new_due_date.set(String::new());
@@ -332,9 +334,13 @@ pub fn HomePage() -> impl IntoView {
 
         for todo in todos_list {
             let group_key = if let Some(due_timestamp) = todo.due_date {
-                if let Some(datetime) = chrono::DateTime::from_timestamp(due_timestamp, 0) {
-                    let local_datetime = datetime.with_timezone(&chrono::Local);
-                    local_datetime.format("%Y-%m").to_string()
+                if let Ok(timestamp_i64) = i64::try_from(due_timestamp) {
+                    if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp_i64, 0) {
+                        let local_datetime = datetime.with_timezone(&chrono::Local);
+                        local_datetime.format("%Y-%m").to_string()
+                    } else {
+                        "Invalid Date".to_string()
+                    }
                 } else {
                     "No Due Date".to_string()
                 }
@@ -448,11 +454,15 @@ pub fn HomePage() -> impl IntoView {
         async move { delete_todo_server(id).await }
     });
 
-    let is_overdue = |due_timestamp: i64| -> bool {
-        if let Some(datetime) = chrono::DateTime::from_timestamp(due_timestamp, 0) {
-            let due_date = datetime.with_timezone(&chrono::Local);
-            let now = chrono::Local::now();
-            due_date < now
+    let is_overdue = |due_timestamp: u64| -> bool {
+        if let Ok(timestamp_i64) = i64::try_from(due_timestamp) {
+            if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp_i64, 0) {
+                let due_date = datetime.with_timezone(&chrono::Local);
+                let now = chrono::Local::now();
+                due_date < now
+            } else {
+                false
+            }
         } else {
             false
         }
@@ -585,7 +595,11 @@ pub fn HomePage() -> impl IntoView {
 
             if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%d %H:%M") {
                 if let Some(local_dt) = chrono::Local.from_local_datetime(&dt).single() {
-                    let timestamp = local_dt.timestamp();
+                    let timestamp_i64 = local_dt.timestamp();
+                    let Ok(timestamp) = u64::try_from(timestamp_i64) else {
+                        set_error_message.set("Due date cannot be before 1970".to_string());
+                        return;
+                    };
 
                     // Check if the due date is in the past and show warning
                     let now = chrono::Local::now();
@@ -674,9 +688,13 @@ pub fn HomePage() -> impl IntoView {
     let is_updating = move || update_todo_action.pending().get();
     let is_deleting = move || delete_todo_action.pending().get();
 
-    let format_due_date = |timestamp: i64| -> String {
-        if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp, 0) {
-            datetime.format("%A, %B %d, %Y at %I:%M %p").to_string()
+    let format_due_date = |timestamp: u64| -> String {
+        if let Ok(timestamp_i64) = i64::try_from(timestamp) {
+            if let Some(datetime) = chrono::DateTime::from_timestamp(timestamp_i64, 0) {
+                datetime.format("%A, %B %d, %Y at %I:%M %p").to_string()
+            } else {
+                "Invalid date".to_string()
+            }
         } else {
             "Invalid date".to_string()
         }

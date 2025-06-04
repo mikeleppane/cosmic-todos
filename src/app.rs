@@ -1,13 +1,13 @@
 #![allow(clippy::must_use_candidate)]
-use leptos::prelude::*;
+use leptos::{leptos_dom::logging, prelude::*};
 use leptos_meta::{Link, MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
-    NavigateOptions, StaticSegment,
+    StaticSegment,
     components::{Route, Router, Routes},
-    hooks::use_navigate,
 };
 
 use crate::{
+    auth::{AuthProvider, use_auth},
     todo::Todo,
     views::{home::HomePage, login::LoginPage},
 };
@@ -39,7 +39,7 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
 
     // Create an authentication state that can be shared across components
-    let (authenticated, set_authenticated) = signal(false);
+    //let (authenticated, set_authenticated) = signal(false);
 
     view! {
         // injects a stylesheet into the document <head>
@@ -57,49 +57,85 @@ pub fn App() -> impl IntoView {
         />
 
         // content for this welcome page
-        <Router>
-            <main>
-                <Routes fallback=|| "Page not found.">
-                    <Route
-                        path=StaticSegment("")
-                        view=move || {
-                            if *authenticated.read() {
-                                view! { <HomePage /> }.into_any()
-                            } else {
-                                view! { <LoginPage set_authenticated /> }.into_any()
+        <AuthProvider>
+            <AppRoutes />
+        </AuthProvider>
+    }
+}
+
+#[component]
+fn AppRoutes() -> impl IntoView {
+    let auth = use_auth();
+
+    logging::console_log("AppRoutes initialized, checking authentication...");
+    logging::console_log(&format!(
+        "Rendering HomePage, authenticated: {}",
+        auth.is_authenticated.get(),
+    ));
+
+    view! {
+        <Show
+            when=move || !auth.is_loading.get()
+            fallback=move || {
+                view! {
+                    <div class="flex items-center justify-center min-h-screen">
+                        <div class="text-lg">Loading...</div>
+                    </div>
+                }
+            }
+        >
+            <Router>
+                <main>
+                    <Routes fallback=|| "Page not found.">
+                        <Route
+                            path=StaticSegment("")
+                            view=move || {
+                                logging::console_log(
+                                    &format!(
+                                        "Rendering HomePage, authenticated: {}",
+                                        auth.is_authenticated.get(),
+                                    ),
+                                );
+                                if auth.is_authenticated.get() {
+                                    view! { <HomePage /> }.into_any()
+                                } else {
+                                    view! { <LoginPage /> }.into_any()
+                                }
                             }
-                        }
-                    />
-                    <Route
-                        path=StaticSegment("login")
-                        view=move || view! { <LoginPage set_authenticated /> }
-                    />
-                    <Route
-                        path=StaticSegment("todo")
-                        view=move || {
-                            if authenticated.get() {
-                                view! { <HomePage /> }.into_any()
-                            } else {
-                                view! { <Redirect path="/login" /> }.into_any()
+                        />
+                        <Route path=StaticSegment("login") view=move || view! { <LoginPage /> } />
+                        <Route
+                            path=StaticSegment("todo")
+                            view=move || {
+                                logging::console_log(
+                                    &format!(
+                                        "Rendering HomePage, authenticated: {}",
+                                        auth.is_authenticated.get(),
+                                    ),
+                                );
+                                if auth.is_authenticated.get() {
+                                    view! { <HomePage /> }.into_any()
+                                } else {
+                                    view! { <LoginPage /> }.into_any()
+                                }
                             }
-                        }
-                    />
-                </Routes>
-            </main>
-        </Router>
+                        />
+                    </Routes>
+                </main>
+            </Router>
+        </Show>
     }
 }
 
 /// Redirects to a different page
-#[component]
+/* #[component]
 fn Redirect(path: &'static str) -> impl IntoView {
     let navigate = use_navigate();
 
     Effect::new(move |_| {
         navigate(path, NavigateOptions::default());
     });
-}
-
+} */
 // Server functions for Cosmos DB operations
 #[server(CreateTodo, "/api")]
 pub async fn create_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
