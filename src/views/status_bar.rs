@@ -1,5 +1,5 @@
 use crate::app::heartbeat_server;
-use leptos::logging;
+use leptos::leptos_dom::logging;
 use leptos::prelude::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -18,16 +18,10 @@ pub fn StatusBar() -> impl IntoView {
     let (last_attempt, set_last_attempt) = signal(chrono::Local::now());
 
     // Heartbeat action with better error handling
-    let heartbeat_action = Action::new(move |(): &()| async move {
-        logging::log!("Attempting heartbeat...");
-        let result = heartbeat_server().await;
-        logging::log!("Heartbeat result: {:?}", result);
-        result
-    });
+    let heartbeat_action = Action::new(move |(): &()| async move { heartbeat_server().await });
 
     // Check server status
     let check_heartbeat = move || {
-        logging::log!("Starting heartbeat check");
         set_server_status.set(ServerStatus::Checking);
         set_last_attempt.set(chrono::Local::now());
         heartbeat_action.dispatch(());
@@ -36,20 +30,17 @@ pub fn StatusBar() -> impl IntoView {
     // Watch for heartbeat results with better error handling
     Effect::new(move |_| {
         if let Some(result) = heartbeat_action.value().get() {
-            logging::log!("Processing heartbeat result: {:?}", result);
-
             let now = chrono::Local::now();
 
             match result {
-                Ok(response) => {
-                    logging::log!("Heartbeat successful: {}", response);
+                Ok(_) => {
+                    logging::console_log("Heartbeat check successful");
                     set_server_status.set(ServerStatus::Online);
                     set_last_successful_check.set(now);
                 }
                 Err(e) => {
-                    logging::log!("Heartbeat failed: {:?}", e);
+                    logging::console_log(&format!("Heartbeat check failed: {e}"));
                     set_server_status.set(ServerStatus::Offline);
-                    // Don't update last_successful_check on failure
                 }
             }
         }
@@ -81,12 +72,9 @@ pub fn StatusBar() -> impl IntoView {
         let closure = leptos::wasm_bindgen::closure::Closure::wrap(Box::new(move || {
             // Check if component is still mounted before executing
             if is_mounted_clone.get_untracked() {
-                logging::log!("Interval triggered heartbeat");
                 set_server_status_clone.set(ServerStatus::Checking);
                 set_last_attempt_clone.set(chrono::Local::now());
                 heartbeat_action_clone.dispatch(());
-            } else {
-                logging::log!("Component unmounted, skipping heartbeat");
             }
         }) as Box<dyn Fn()>);
 
@@ -104,7 +92,6 @@ pub fn StatusBar() -> impl IntoView {
 
         // Cleanup function
         on_cleanup(move || {
-            logging::log!("StatusBar component unmounting, cleaning up interval");
             set_is_mounted.set(false);
             if let (Some(window), Some(id)) = (web_sys::window(), interval_id) {
                 window.clear_interval_with_handle(id);
@@ -165,7 +152,6 @@ pub fn StatusBar() -> impl IntoView {
                     // Manual refresh button
                     <button
                         on:click=move |_| {
-                            logging::log!("Manual heartbeat check triggered");
                             check_heartbeat();
                         }
                         class="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"

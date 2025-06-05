@@ -28,6 +28,7 @@ pub struct AuthState {
 // localStorage helpers for auth state
 #[cfg(feature = "hydrate")]
 pub fn get_auth_state() -> Option<AuthState> {
+    use leptos::leptos_dom::logging;
     use web_sys::window;
 
     let window = window()?;
@@ -37,11 +38,14 @@ pub fn get_auth_state() -> Option<AuthState> {
         Ok(Some(auth_state_str)) => {
             match serde_json::from_str(&auth_state_str) {
                 Ok(auth_state) => {
-                    leptos::logging::log!("Successfully retrieved auth state from localStorage");
+                    logging::console_log("Successfully retrieved auth state from localStorage");
                     Some(auth_state)
                 }
                 Err(e) => {
-                    leptos::logging::log!("Failed to parse auth state from localStorage: {}", e);
+                    logging::console_log(&format!(
+                        "Failed to parse auth state from localStorage: {}",
+                        e
+                    ));
                     // Clear corrupted data
                     let _ = storage.remove_item("auth_state");
                     None
@@ -49,11 +53,11 @@ pub fn get_auth_state() -> Option<AuthState> {
             }
         }
         Ok(None) => {
-            leptos::logging::log!("No auth state found in localStorage");
+            logging::console_log("No auth state found in localStorage");
             None
         }
         Err(e) => {
-            leptos::logging::log!("Error accessing localStorage: {:?}", e);
+            logging::console_log(&format!("Error accessing localStorage: {:?}", e));
             None
         }
     }
@@ -61,25 +65,26 @@ pub fn get_auth_state() -> Option<AuthState> {
 
 #[cfg(feature = "hydrate")]
 pub fn store_auth_state(auth_state: &AuthState) {
+    use leptos::leptos_dom::logging;
     if let Some(window) = web_sys::window() {
         if let Ok(Some(storage)) = window.local_storage() {
             match serde_json::to_string(auth_state) {
                 Ok(auth_state_str) => match storage.set_item("auth_state", &auth_state_str) {
                     Ok(_) => {
-                        leptos::logging::log!(
-                            "Successfully stored auth state in localStorage: authenticated={}",
-                            auth_state.is_authenticated
-                        );
+                        logging::console_log(&format!(
+                            "Successfully stored auth state in localStorage: authenticated={:#?}",
+                            auth_state
+                        ));
                     }
                     Err(e) => {
-                        leptos::logging::log!(
+                        logging::console_log(&format!(
                             "Failed to store auth state in localStorage: {:?}",
                             e
-                        );
+                        ));
                     }
                 },
                 Err(e) => {
-                    leptos::logging::log!("Failed to serialize auth state: {}", e);
+                    logging::console_log(&format!("Failed to serialize auth state: {}", e));
                 }
             }
         }
@@ -540,7 +545,6 @@ pub async fn validate_session(session_token: String) -> Result<AuthStatus, Serve
         .expect("Failed to acquire session store lock");
 
     if let Some(session_info) = sessions.get(&session_token) {
-        leptos::logging::log!("SESSION INFO: {:?}", session_info);
         // Check if session is still valid
         if session_info.is_active && Utc::now() < session_info.expires_at {
             let expires_in = (session_info.expires_at - Utc::now()).num_seconds();
@@ -582,7 +586,6 @@ pub async fn logout_user(session_token: String) -> Result<bool, ServerFnError> {
 
     if let Some(session_info) = sessions.get_mut(&session_token) {
         session_info.is_active = false;
-        leptos::logging::log!("User {} logged out", session_info.username);
         Ok(true)
     } else {
         Ok(false)

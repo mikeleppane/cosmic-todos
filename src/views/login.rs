@@ -1,4 +1,5 @@
 use crate::auth::{LoginRequest, use_auth};
+use leptos::leptos_dom::logging;
 use leptos::{ev, prelude::*};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
 use validator::Validate;
@@ -29,11 +30,14 @@ pub fn LoginPage() -> impl IntoView {
 
         match credentials.validate() {
             Ok(()) => {
-                leptos::logging::log!("Attempting to authenticate user: {}", credentials.username);
+                logging::console_log(&format!(
+                    "Attempting to authenticate user: {}",
+                    credentials.username
+                ));
             }
             Err(e) => {
                 set_error.set(format!("Invalid username or password: {e}"));
-                leptos::logging::error!("Validation error: {e}");
+                logging::console_debug_warn(&format!("Validation error: {e}"));
                 return;
             }
         }

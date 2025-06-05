@@ -138,11 +138,8 @@ pub async fn create_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
     };
 
     // Initialize DB on first access
-    logging::log!("Initializing Cosmos DB...");
     let cosmos_service = get_cosmos_service()
         .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {e}")))?;
-
-    logging::log!("Creating todo in Cosmos DB: {:?}", sanitized_todo);
 
     let cosmos_todo = cosmos_service
         .create_todo(sanitized_todo)
@@ -161,8 +158,6 @@ pub async fn get_todos_server() -> Result<Vec<Todo>, ServerFnError> {
 
     let cosmos_service = get_cosmos_service()
         .map_err(|e| ServerFnError::new(format!("Failed to get Cosmos service: {e}")))?;
-
-    logging::log!("Retrieving todos from Cosmos DB...");
 
     let cosmos_todos = cosmos_service
         .get_todos()

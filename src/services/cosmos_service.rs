@@ -195,7 +195,6 @@ impl CosmosService {
                             }
                         }
                         Ok(None) => {
-                            logging::console_log("No more pages in query stream");
                             break; // No more pages
                         }
                         Err(e) => {
@@ -286,8 +285,6 @@ impl CosmosService {
             logging::console_error(&error_msg);
             return Err(Box::new(std::io::Error::other(error_msg)));
         }
-
-        logging::console_log(&format!("Updated todo in Cosmos DB: {}", cosmos_todo.id));
         Ok(cosmos_todo)
     }
 
