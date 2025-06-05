@@ -1,5 +1,5 @@
 #![allow(clippy::must_use_candidate)]
-use leptos::{leptos_dom::logging, prelude::*};
+use leptos::prelude::*;
 use leptos_meta::{Link, MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
     StaticSegment,
@@ -67,12 +67,6 @@ pub fn App() -> impl IntoView {
 fn AppRoutes() -> impl IntoView {
     let auth = use_auth();
 
-    logging::console_log("AppRoutes initialized, checking authentication...");
-    logging::console_log(&format!(
-        "Rendering HomePage, authenticated: {}",
-        auth.is_authenticated.get(),
-    ));
-
     view! {
         <Show
             when=move || !auth.is_loading.get()
@@ -90,12 +84,6 @@ fn AppRoutes() -> impl IntoView {
                         <Route
                             path=StaticSegment("")
                             view=move || {
-                                logging::console_log(
-                                    &format!(
-                                        "Rendering HomePage, authenticated: {}",
-                                        auth.is_authenticated.get(),
-                                    ),
-                                );
                                 if auth.is_authenticated.get() {
                                     view! { <HomePage /> }.into_any()
                                 } else {
@@ -107,12 +95,6 @@ fn AppRoutes() -> impl IntoView {
                         <Route
                             path=StaticSegment("todo")
                             view=move || {
-                                logging::console_log(
-                                    &format!(
-                                        "Rendering HomePage, authenticated: {}",
-                                        auth.is_authenticated.get(),
-                                    ),
-                                );
                                 if auth.is_authenticated.get() {
                                     view! { <HomePage /> }.into_any()
                                 } else {
@@ -241,4 +223,9 @@ fn sanitize_string(input: &str) -> String {
         .replace('\'', "&#x27;")
         .trim()
         .to_string()
+}
+
+#[server(HeartbeatServer, "/api")]
+pub async fn heartbeat_server() -> Result<String, ServerFnError> {
+    Ok("alive".to_string())
 }

@@ -213,6 +213,7 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
                                     return Some(validation_result);
                                 } else {
                                     // Session expired, but don't clear immediately - let the effect handle it
+                                    remove_auth_state();
                                     leptos::logging::log!("Session expired");
                                     return Some(validation_result);
                                 }
@@ -220,8 +221,9 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
                             Err(e) => {
                                 leptos::logging::log!("Session validation error: {}", e);
                                 // Network error or server error - keep local state for now
+                                remove_auth_state();
                                 return Some(AuthStatus {
-                                    is_authenticated: auth_state.is_authenticated,
+                                    is_authenticated: false,
                                     user_info: auth_state.user_info,
                                     session_expires_in: None,
                                 });
@@ -264,7 +266,6 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
                         };
                         store_auth_state(&auth_state);
                     } else {
-                        // Only remove if validation explicitly failed
                         remove_auth_state();
                     }
                 }
@@ -280,6 +281,7 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
                     if get_auth_state().is_none() {
                         set_is_authenticated.set(false);
                         set_user_info.set(None);
+                        remove_auth_state();
                     }
                 }
             }
@@ -362,7 +364,6 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
                     }
                 }
             }
-
             // Clear localStorage
             remove_auth_state();
         }
@@ -539,6 +540,7 @@ pub async fn validate_session(session_token: String) -> Result<AuthStatus, Serve
         .expect("Failed to acquire session store lock");
 
     if let Some(session_info) = sessions.get(&session_token) {
+        leptos::logging::log!("SESSION INFO: {:?}", session_info);
         // Check if session is still valid
         if session_info.is_active && Utc::now() < session_info.expires_at {
             let expires_in = (session_info.expires_at - Utc::now()).num_seconds();

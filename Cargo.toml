@@ -55,6 +55,12 @@ ssr = [
     "dep:tracing",
 ]
 
+[profile.release] # optimize for speed
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
 # Defines a size-optimized profile for the WASM bundle in release mode
 [profile.wasm-release]
 inherits = "release"
@@ -79,7 +85,6 @@ site-pkg-dir = "pkg"
 # Assets source dir. All files found here will be copied and synchronized to site-root.
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
 #
-style-file = "style/main.scss"
 tailwind-input-file = "style/tailwind.css"
 tailwind-config-file = "tailwind.config.js"
 # Optional. Env: LEPTOS_ASSETS_DIR.

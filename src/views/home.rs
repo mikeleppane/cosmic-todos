@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use crate::app::{create_todo_server, delete_todo_server, get_todos_server, update_todo_server};
 use crate::todo::{Todo, TodoAssignee, TodoStatus};
+use crate::views::status_bar::StatusBar;
 use chrono::{Datelike, Local, NaiveDate, TimeZone};
 use leptos::leptos_dom::logging;
 use leptos::web_sys;
@@ -1395,6 +1396,7 @@ pub fn HomePage() -> impl IntoView {
                     </div>
                 </Show>
             </main>
+            <StatusBar />
         </ErrorBoundary>
     }
 }
