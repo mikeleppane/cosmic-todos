@@ -30,6 +30,7 @@ pub struct Todo {
 }
 
 impl Todo {
+    #[must_use]
     pub fn new(title: String, assignee: TodoAssignee) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
@@ -41,16 +42,19 @@ impl Todo {
         }
     }
 
+    #[must_use]
     pub fn with_description(mut self, description: Option<String>) -> Self {
         self.description = description;
         self
     }
 
+    #[must_use]
     pub fn with_due_date(mut self, due_date: Option<u64>) -> Self {
         self.due_date = due_date;
         self
     }
 
+    #[must_use]
     pub fn is_overdue(&self) -> bool {
         if let Some(due_timestamp) = self.due_date {
             if let Ok(timestamp_i64) = i64::try_from(due_timestamp) {
@@ -63,6 +67,7 @@ impl Todo {
         false
     }
 
+    #[must_use]
     pub fn formatted_due_date(&self) -> Option<String> {
         self.due_date.and_then(|timestamp| {
             i64::try_from(timestamp).ok().and_then(|ts| {
@@ -74,6 +79,7 @@ impl Todo {
         })
     }
 
+    #[must_use]
     pub fn email(&self) -> &'static str {
         self.assignee.email()
     }

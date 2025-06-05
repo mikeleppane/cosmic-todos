@@ -9,6 +9,7 @@ pub enum TodoStatus {
 }
 
 impl TodoStatus {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Pending => "Pending",
@@ -38,7 +39,7 @@ impl FromStr for TodoStatus {
         match s {
             "Pending" => Ok(Self::Pending),
             "Completed" => Ok(Self::Completed),
-            _ => Err(format!("Invalid todo status: {}", s)),
+            _ => Err(format!("Invalid todo status: {s}")),
         }
     }
 }
@@ -50,6 +51,7 @@ pub enum TodoAssignee {
 }
 
 impl TodoAssignee {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Mikko => "Mikko",
@@ -57,6 +59,7 @@ impl TodoAssignee {
         }
     }
 
+    #[must_use]
     pub fn email(&self) -> &'static str {
         match self {
             Self::Mikko => "mikko@familyleppanen.com",
@@ -78,7 +81,7 @@ impl FromStr for TodoAssignee {
         match s {
             "Mikko" => Ok(Self::Mikko),
             "Niina" => Ok(Self::Niina),
-            _ => Err(format!("Invalid assignee: {}", s)),
+            _ => Err(format!("Invalid assignee: {s}")),
         }
     }
 }

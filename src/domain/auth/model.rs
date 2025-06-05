@@ -33,6 +33,7 @@ pub struct AuthState {
 }
 
 impl AuthState {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             is_authenticated: false,
@@ -41,6 +42,7 @@ impl AuthState {
         }
     }
 
+    #[must_use]
     pub fn authenticated(user_info: UserInfo, token: String) -> Self {
         Self {
             is_authenticated: true,

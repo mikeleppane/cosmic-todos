@@ -258,6 +258,7 @@ pub fn AuthProvider(children: Children) -> impl IntoView {
 //            {children()}
 //        </Provider>
 
+#[must_use]
 pub fn use_auth() -> AuthContext {
     expect_context::<AuthContext>()
 }
@@ -288,6 +289,7 @@ pub fn get_auth_state() -> Option<AuthState> {
 }
 
 #[cfg(not(feature = "hydrate"))]
+#[must_use]
 pub fn get_auth_state() -> Option<AuthState> {
     None
 }
@@ -339,6 +341,7 @@ pub fn get_session_token() -> Option<String> {
 }
 
 #[cfg(not(feature = "hydrate"))]
+#[must_use]
 pub fn get_session_token() -> Option<String> {
     None
 }

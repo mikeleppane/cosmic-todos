@@ -2,7 +2,7 @@ use crate::config::AppConfig;
 use azure_core::credentials::Secret;
 use azure_data_cosmos::{
     CosmosClient,
-    clients::{DatabaseClient},
+    clients::{ContainerClient, DatabaseClient},
 };
 
 pub struct CosmosDBClient {
@@ -12,6 +12,11 @@ pub struct CosmosDBClient {
 }
 
 impl CosmosDBClient {
+    /// Creates a new `CosmosDBClient` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `CosmosClient` fails to initialize with the provided configuration.
     pub fn new(config: &AppConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let client = CosmosClient::with_key(
             &config.cosmos.uri,
@@ -30,7 +35,7 @@ impl CosmosDBClient {
     pub fn database(&self) -> DatabaseClient {
         self.client.database_client(&self.database_name)
     }
-#[must_use] pub fn container(&self) -> ContainerClient
+    #[must_use]
     pub fn container(&self) -> ContainerClient {
         self.database().container_client(&self.container_name)
     }

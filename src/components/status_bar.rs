@@ -59,16 +59,14 @@ pub fn StatusBar() -> impl IntoView {
 
     // Periodic heartbeat check with proper cleanup
     Effect::new(move |_| {
-        let interval_id = if let Ok(id) = set_interval_with_handle(
+        let Ok(interval_id) = set_interval_with_handle(
             move || {
                 if is_mounted.get_untracked() {
                     check_heartbeat();
                 }
             },
             Duration::from_secs(30),
-        ) {
-            id
-        } else {
+        ) else {
             leptos::logging::warn!("Failed to set up interval for heartbeat check");
             return; // Exit the effect if we can't set up the interval
         };
@@ -126,7 +124,8 @@ pub fn StatusBar() -> impl IntoView {
                     <div class="relative">
                         <div class=move || format!("w-3 h-3 rounded-full {}", status_color())></div>
                         <Show when=move || {
-                            is_mounted.get_untracked() && server_status.get() == ServerStatus::Checking
+                            is_mounted.get_untracked()
+                                && server_status.get() == ServerStatus::Checking
                         }>
                             <div class="absolute inset-0 w-3 h-3 rounded-full bg-yellow-500 animate-ping opacity-75"></div>
                         </Show>
@@ -135,7 +134,8 @@ pub fn StatusBar() -> impl IntoView {
                     <div class="flex-1">
                         <p class="text-sm font-medium text-gray-900">{status_text}</p>
                         <Show when=move || {
-                            is_mounted.get_untracked() && server_status.get() != ServerStatus::Checking
+                            is_mounted.get_untracked()
+                                && server_status.get() != ServerStatus::Checking
                         }>
                             <p class="text-xs text-gray-500">"Last check: " {format_last_check}</p>
                         </Show>
@@ -152,7 +152,8 @@ pub fn StatusBar() -> impl IntoView {
                         class="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
                         title="Check server status"
                         disabled=move || {
-                            !is_mounted.get_untracked() || server_status.get() == ServerStatus::Checking
+                            !is_mounted.get_untracked()
+                                || server_status.get() == ServerStatus::Checking
                         }
                     >
                         <svg
@@ -183,7 +184,9 @@ pub fn StatusBar() -> impl IntoView {
                 </div>
 
                 // Additional info when offline
-                <Show when=move || is_mounted.get_untracked() && server_status.get() == ServerStatus::Offline>
+                <Show when=move || {
+                    is_mounted.get_untracked() && server_status.get() == ServerStatus::Offline
+                }>
                     <div class="mt-2 pt-2 border-t border-gray-100">
                         <p class="text-xs text-red-600">
                             "Server connection lost. Some features may not work."
