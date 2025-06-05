@@ -98,6 +98,37 @@ The application is built on a **three-tier architecture** with clear separation 
 
 The architecture supports modern development practices including continuous deployment, containerization, and cloud-native patterns while maintaining the performance and safety guarantees that Rust provides.
 
+### Cosmos DB
+Cosmic Todos uses **Azure Cosmos DB** as its primary data store, providing a globally distributed, multi-model database service with the following features:
+- **Multi-Model Support**: Supports document, key-value, graph, and column-family data models
+- **Global Distribution**: Data is replicated across multiple Azure regions for low-latency access
+- **Automatic Indexing**: All data is automatically indexed without requiring schema definitions
+- **Rich Query Capabilities**: Supports SQL-like queries, stored procedures, and change feed processing
+- **High Availability**: Offers 99.999% availability SLA with multi-region writes
+- **Security**: Built-in encryption at rest and in transit, with fine-grained access control
+- **Serverless Options**: Pay-per-request pricing model for cost efficiency
+- **Change Feed**: Real-time data synchronization capabilities for reactive applications
+
+Data is stored in a JSON-like format, allowing for flexible schema design and easy integration with the Rust application. The Cosmos DB SDK for Rust provides seamless interaction with the database, enabling efficient data retrieval and manipulation.
+
+Example Cosmos DB Document Structure:
+
+```json
+{
+  "id": "task123",
+  "title": "Grocery Shopping",
+  "description": "Buy groceries for the week",
+  "status": "Not Started",
+  "dueDate": "2023-10-15T12:00:00Z",
+  "assignee": "family_member_id",
+  "createdAt": "2023-10-01T10:00:00Z",
+  "updatedAt": "2023-10-01T10:00:00Z"
+}
+```
+
+### Azure Functions
+Cosmic Todos uses **Azure Functions** to implement serverless APIs that handle business logic and data operations. This allows for a scalable, event-driven architecture that can respond to HTTP requests, database changes, and other triggers without managing server infrastructure. 
+
 ## 🛠️ Technology Stack
 
 | Category | Technology |
@@ -112,6 +143,9 @@ The architecture supports modern development practices including continuous depl
 | **Routing** | [Leptos Router](https://docs.rs/leptos_router/) |
 | **Task Runner** | [Just](https://github.com/casey/just) |
 | **Container** | [Docker](https://www.docker.com/) |
+| **CI/CD** | [GitHub Actions]() - For automated builds and deployments |
+| **Testing** | [Playwright]() - End-to-end testing framework for web applications |
+| **Cloud** | [Azure](https://azure.microsoft.com/)|
 
 ## 🚀 Getting Started
 
