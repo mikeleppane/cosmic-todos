@@ -63,6 +63,7 @@ def process_todo_notifications(todo, current_time, todo_service):
             return
 
         time_diff = due_date - current_time
+        cast_floats_fields_to_int(todo)
 
         # Check if item is overdue (up to 1 hour)
         if (
@@ -90,6 +91,16 @@ def process_todo_notifications(todo, current_time, todo_service):
 
     except Exception as e:
         logging.error(f'Error processing todo {todo.get("id", "unknown")}: {str(e)}')
+
+
+def cast_floats_fields_to_int(todo):
+    """Convert float fields in todo to int for consistency"""
+    try:
+        for key in ["due_date", "created_at", "updated_at", "last_notification_time"]:
+            if key in todo and isinstance(todo[key], float):
+                todo[key] = int(todo[key])
+    except Exception as e:
+        logging.error(f"Error casting float fields: {str(e)}")
 
 
 def send_overdue_notification(todo, due_date):
@@ -250,7 +261,7 @@ def update_last_notification_time(todo, current_time, todo_service):
     """Update the last notification time for daily reminders"""
     try:
         # Store as epoch timestamp for consistency
-        todo["last_notification_time"] = current_time.timestamp()
+        todo["last_notification_time"] = int(current_time.timestamp())
         todo_service.upsert_item(todo)
         logging.info(f'Updated last notification time for todo {todo.get("id")}')
 
