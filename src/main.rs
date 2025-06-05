@@ -4,9 +4,11 @@
 #[tokio::main]
 async fn main() -> miette::Result<()> {
     use axum::Router;
-    use cosmic_rust::app::App;
-    use cosmic_rust::app::shell;
-    use cosmic_rust::config::{get_config, initialize_config};
+    use cosmic_rust::app_tmp::App;
+    use cosmic_rust::app_tmp::shell;
+    use cosmic_rust::config::get_config;
+    use cosmic_rust::config::initialize_config;
+    use cosmic_rust::services::cosmos::initialize_cosmos_db;
     use leptos::prelude::*;
     use leptos_axum::{LeptosRoutes, generate_route_list};
 
@@ -15,6 +17,8 @@ async fn main() -> miette::Result<()> {
     let app_config = get_config()
         .map_err(|e| miette::miette!("Failed to get configuration: {}", e))?
         .clone();
+
+    initialize_cosmos_db().map_err(|e| miette::miette!("Failed to initialize Cosmos DB: {}", e))?;
 
     let conf = get_configuration(None)
         .map_err(|e| miette::miette!("Failed to get Leptos configuration: {}", e))?;

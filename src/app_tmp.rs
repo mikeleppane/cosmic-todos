@@ -7,9 +7,11 @@ use leptos_router::{
 };
 
 use crate::{
-    auth::{AuthProvider, use_auth},
-    todo::Todo,
-    views::{home::HomePage, login::LoginPage},
+    domain::{
+        auth::{AuthProvider, use_auth},
+        todo::Todo,
+    },
+    pages::{home::HomePage, login::LoginPage},
 };
 
 // Static configuration loaded once at startup
@@ -121,7 +123,7 @@ fn Redirect(path: &'static str) -> impl IntoView {
 // Server functions for Cosmos DB operations
 #[server(CreateTodo, "/api")]
 pub async fn create_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
-    use crate::services::cosmos_service::get_cosmos_service;
+    use crate::services::cosmos::todo_repository::get_cosmos_service;
     use leptos::logging;
     use validator::Validate;
 
@@ -153,7 +155,7 @@ pub async fn create_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
 
 #[server(name=GetTodos, prefix="/api")]
 pub async fn get_todos_server() -> Result<Vec<Todo>, ServerFnError> {
-    use crate::services::cosmos_service::get_cosmos_service;
+    use crate::services::cosmos::todo_repository::get_cosmos_service;
     use leptos::logging;
 
     let cosmos_service = get_cosmos_service()
@@ -173,7 +175,7 @@ pub async fn get_todos_server() -> Result<Vec<Todo>, ServerFnError> {
 
 #[server(UpdateTodo, "/api")]
 pub async fn update_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
-    use crate::services::cosmos_service::get_cosmos_service;
+    use crate::services::cosmos::todo_repository::get_cosmos_service;
     use leptos::logging;
 
     let cosmos_service = get_cosmos_service()
@@ -191,7 +193,7 @@ pub async fn update_todo_server(todo: Todo) -> Result<Todo, ServerFnError> {
 
 #[server(DeleteTodo, "/api")]
 pub async fn delete_todo_server(todo_id: String) -> Result<(), ServerFnError> {
-    use crate::services::cosmos_service::get_cosmos_service;
+    use crate::services::cosmos::todo_repository::get_cosmos_service;
     use leptos::logging;
 
     let cosmos_service = get_cosmos_service()

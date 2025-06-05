@@ -1,1 +1,1 @@
-pub mod cosmos_service;
+pub mod cosmos;

@@ -1,8 +1,10 @@
 use std::str::FromStr;
 
-use crate::app::{create_todo_server, delete_todo_server, get_todos_server, update_todo_server};
-use crate::todo::{Todo, TodoAssignee, TodoStatus};
-use crate::views::status_bar::StatusBar;
+use crate::app_tmp::{
+    create_todo_server, delete_todo_server, get_todos_server, update_todo_server,
+};
+use crate::components::status_bar::StatusBar;
+use crate::domain::todo::{Todo, TodoAssignee, TodoStatus};
 use chrono::{Datelike, Local, NaiveDate, TimeZone};
 use leptos::leptos_dom::logging;
 use leptos::web_sys;

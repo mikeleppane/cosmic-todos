@@ -1,4 +1,4 @@
-use leptos::leptos_dom::logging;
+/* use leptos::leptos_dom::logging;
 use miette::{Diagnostic, SourceSpan};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -72,7 +72,7 @@ pub struct AppConfig {
 #[cfg(feature = "ssr")]
 use axum::extract::FromRef;
 
-use crate::todo::TodoAssignee;
+use crate::domain::todo::TodoAssignee;
 #[cfg(feature = "ssr")]
 impl FromRef<()> for AppConfig {
     fn from_ref(_: &()) -> Self {
@@ -638,3 +638,4 @@ pub fn initialize_config() -> miette::Result<()> {
         }
     }
 }
+ */

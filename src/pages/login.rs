@@ -1,4 +1,5 @@
-use crate::auth::{LoginRequest, use_auth};
+use crate::domain::auth::context::use_auth;
+use crate::domain::auth::model::LoginRequest;
 use leptos::leptos_dom::logging;
 use leptos::{ev, prelude::*};
 use leptos_router::{NavigateOptions, hooks::use_navigate};

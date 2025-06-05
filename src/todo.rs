@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, TimeZone};
+/* use chrono::{DateTime, Local, TimeZone};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::str::FromStr;
@@ -84,7 +84,7 @@ pub struct Todo {
     pub status: TodoStatus,
 }
 
-fn validate_no_html(input: &str) -> Result<(), validator::ValidationError> {
+fn validate_no_html(input: &str) -> Result<(), validator::/*  */ValidationError> {
     if input.contains('<') || input.contains('>') || input.contains('&') {
         return Err(validator::ValidationError::new("HTML tags not allowed"));
     }
@@ -131,3 +131,4 @@ impl Todo {
         }
     }
 }
+ */
